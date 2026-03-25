@@ -1,5 +1,8 @@
 import { io } from 'socket.io-client';
 
-// Vite proxies /socket.io → localhost:3001 in dev (see vite.config.ts).
-// In production the server serves the client on the same origin.
-export const socket = io(window.location.origin);
+// VITE_SERVER_URL is set in client/.env (dev) or left blank (production).
+// When blank the browser connects to its own origin, which is correct when
+// Express serves the built client.
+const serverUrl = import.meta.env.VITE_SERVER_URL || window.location.origin;
+
+export const socket = io(serverUrl);

@@ -90,15 +90,9 @@ export function ScoreboardView() {
               Code: {session.code}
             </div>
           </div>
-          {session.showQrCode && (
+          {session.qrCodeMode === 'small' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <QRCodeSVG
-                value={playerUrl}
-                size={72}
-                bgColor="transparent"
-                fgColor="#ffd700"
-                style={{ borderRadius: 6 }}
-              />
+              <QRCodeSVG value={playerUrl} size={72} bgColor="transparent" fgColor="#ffd700" style={{ borderRadius: 6 }} />
               <div>
                 <div className="text-dim text-sm">Scan to join</div>
                 <div style={{ fontWeight: 700, letterSpacing: '0.12em', color: 'var(--gold)', fontSize: '1.1rem' }}>
@@ -174,6 +168,31 @@ export function ScoreboardView() {
           </div>
         )}
       </div>
+
+      {/* ── Big QR overlay ──────────────────────────────────────────────── */}
+      {session.qrCodeMode === 'big' && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.82)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 32, zIndex: 100,
+        }}>
+          <div style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
+            Scan to join
+          </div>
+          <QRCodeSVG
+            value={playerUrl}
+            size={Math.min(window.innerWidth, window.innerHeight) * 0.55}
+            bgColor="transparent"
+            fgColor="#ffd700"
+            style={{ borderRadius: 12 }}
+          />
+          <div style={{ fontSize: 'clamp(2.5rem, 8vw, 5rem)', fontWeight: 900, letterSpacing: '0.2em', color: 'var(--gold)', fontFamily: 'monospace' }}>
+            {session.code}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

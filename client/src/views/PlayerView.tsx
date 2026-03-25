@@ -12,6 +12,7 @@ export function PlayerView() {
   const [code, setCode] = useState(initialCode);
   const [availableTeams, setAvailableTeams] = useState<TeamState[]>([]);
   const [teamCreationAllowed, setTeamCreationAllowed] = useState(true);
+  const [maxTeamSize, setMaxTeamSize] = useState<number | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
   const [teamName, setTeamName] = useState('');
   const [teamId, setTeamId] = useState('');
@@ -23,6 +24,7 @@ export function PlayerView() {
     const onState = (state: SessionState) => {
       setSession(state);
       setTeamCreationAllowed(state.allowTeamCreation);
+      setMaxTeamSize(state.maxTeamSize);
       if (!state.buzzingEnabled && state.buzzOrder.length === 0) {
         setOptimisticBuzzed(false);
       }
@@ -43,10 +45,18 @@ export function PlayerView() {
         }
       );
     };
+    const onPeekUpdate = (result: { teams: TeamState[]; allowTeamCreation: boolean; maxTeamSize: number | null }) => {
+      setAvailableTeams(result.teams);
+      setTeamCreationAllowed(result.allowTeamCreation);
+      setMaxTeamSize(result.maxTeamSize);
+    };
+
     socket.on('session:state', onState);
+    socket.on('session:peek-update', onPeekUpdate);
     socket.on('team:deleted', onTeamDeleted);
     return () => {
       socket.off('session:state', onState);
+      socket.off('session:peek-update', onPeekUpdate);
       socket.off('team:deleted', onTeamDeleted);
     };
   }, []);
@@ -62,10 +72,11 @@ export function PlayerView() {
     socket.emit(
       'session:peek',
       sessionCode,
-      (result: { teams: TeamState[]; allowTeamCreation: boolean } | null) => {
+      (result: { teams: TeamState[]; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
         if (!result) { setError('Session not found.'); setStep('enter-code'); return; }
         setAvailableTeams(result.teams);
         setTeamCreationAllowed(result.allowTeamCreation);
+        setMaxTeamSize(result.maxTeamSize);
         setStep('pick-team');
       }
     );
@@ -148,34 +159,47 @@ export function PlayerView() {
           <div className="card mt-24">
             <div className="section-title">Join an existing team</div>
             <div className="flex flex-col gap-8">
-              {availableTeams.map((team) => (
-                <button
-                  key={team.id}
-                  className="team-card"
-                  style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 'var(--radius)', width: '100%', textAlign: 'left', color: 'var(--text)' }}
-                  onClick={() => joinTeam(team.name)}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div className="team-name">{team.name}</div>
-                    <div className="text-dim text-sm">
-                      {team.memberCount} member{team.memberCount !== 1 ? 's' : ''} · {team.score} pts
+              {availableTeams.map((team) => {
+                const isFull = maxTeamSize !== null && team.memberCount >= maxTeamSize;
+                return (
+                  <button
+                    key={team.id}
+                    className="team-card"
+                    disabled={isFull}
+                    style={{
+                      cursor: isFull ? 'not-allowed' : 'pointer',
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: 'var(--radius)',
+                      width: '100%',
+                      textAlign: 'left',
+                      color: 'var(--text)',
+                      opacity: isFull ? 0.5 : 1,
+                    }}
+                    onClick={() => !isFull && joinTeam(team.name)}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div className="team-name">{team.name}</div>
+                      <div className="text-dim text-sm">
+                        {team.memberCount}{maxTeamSize !== null ? `/${maxTeamSize}` : ''} device{team.memberCount !== 1 ? 's' : ''} · {team.score} pts
+                      </div>
                     </div>
-                  </div>
-                  <span className="btn btn-secondary btn-sm" style={{ pointerEvents: 'none' }}>Join</span>
-                </button>
-              ))}
+                    <span className="btn btn-secondary btn-sm" style={{ pointerEvents: 'none' }}>
+                      {isFull ? 'Full' : 'Join'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* Create new team */}
-        <div className="card mt-16">
-          <div className="section-title">
-            {availableTeams.length === 0 ? 'Create your team' : 'Or create a new team'}
-          </div>
-          {!teamCreationAllowed ? (
-            <p className="text-dim text-sm">The host has locked team creation. Please choose a team above.</p>
-          ) : (
+        {/* Create new team — hidden when host has locked team creation */}
+        {teamCreationAllowed && (
+          <div className="card mt-16">
+            <div className="section-title">
+              {availableTeams.length === 0 ? 'Create your team' : 'Or create a new team'}
+            </div>
             <div className="flex flex-col gap-12">
               <input
                 className="input"
@@ -195,8 +219,8 @@ export function PlayerView() {
                 Create &amp; Join
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <button
           className="btn btn-ghost btn-sm mt-16"

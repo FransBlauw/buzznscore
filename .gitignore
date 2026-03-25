@@ -3,4 +3,5 @@ dist/
 client/dist/
 client/node_modules/
 .env
+client/.env
 data/

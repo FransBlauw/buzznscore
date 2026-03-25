@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
 import { socket } from '../socket';
 import { SessionState, TeamState } from '../types';
 
@@ -67,9 +66,22 @@ export function HostView() {
   const scoreboardUrl = `${window.location.origin}?view=scoreboard&code=${session.code}`;
 
   const copyLink = (url: string, key: string) => {
-    navigator.clipboard.writeText(url);
-    setCopied(key);
-    setTimeout(() => setCopied(''), 2000);
+    const finish = () => { setCopied(key); setTimeout(() => setCopied(''), 2000); };
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(finish).catch(finish);
+    } else {
+      // Fallback for non-secure contexts (HTTP over LAN)
+      const el = document.createElement('textarea');
+      el.value = url;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      try { document.execCommand('copy'); } catch (_) { /* ignore */ }
+      document.body.removeChild(el);
+      finish();
+    }
   };
 
   const enableBuzzing  = () => socket.emit('buzzer:enable', session.code, true);
@@ -81,8 +93,8 @@ export function HostView() {
   const toggleTeamCreation = (allowed: boolean) =>
     socket.emit('team:allow-creation', session.code, allowed);
 
-  const toggleQrCode = (show: boolean) =>
-    socket.emit('session:show-qr', session.code, show);
+  const setQrMode = (mode: 'off' | 'small' | 'big') =>
+    socket.emit('session:qr-mode', session.code, mode);
 
   const createTeam = () => {
     const name = newTeamName.trim();
@@ -105,16 +117,6 @@ export function HostView() {
           </div>
         </div>
         <div className="flex gap-8 ml-auto flex-wrap">
-          {session.showQrCode ? (
-            <button className="btn btn-ghost" onClick={() => toggleQrCode(false)}>Hide QR</button>
-          ) : (
-            <button className="btn btn-secondary" onClick={() => toggleQrCode(true)}>Show QR</button>
-          )}
-          {session.allowTeamCreation ? (
-            <button className="btn btn-ghost" onClick={() => toggleTeamCreation(false)}>Lock Teams</button>
-          ) : (
-            <button className="btn btn-secondary" onClick={() => toggleTeamCreation(true)}>Unlock Teams</button>
-          )}
           {session.buzzingEnabled ? (
             <button className="btn btn-ghost" onClick={disableBuzzing}>Disable Buzzing</button>
           ) : (
@@ -198,41 +200,103 @@ export function HostView() {
         {/* ── Right column ────────────────────────────────────────────── */}
         <div className="flex flex-col gap-16">
 
-          {/* Player join QR */}
-          <div className="card text-center">
-            <div className="section-title">Player Join Link</div>
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
-              <QRCodeSVG
-                value={playerUrl}
-                size={150}
-                bgColor="transparent"
-                fgColor="#ffd700"
-                style={{ borderRadius: 8 }}
-              />
+          {/* Links */}
+          <div className="card">
+            <div className="section-title">Links</div>
+            <div className="flex flex-col gap-12">
+              <div>
+                <div className="text-dim text-sm" style={{ marginBottom: 4 }}>Player join</div>
+                <div className="text-dim" style={{ fontSize: '0.8rem', wordBreak: 'break-all', marginBottom: 6 }}>{playerUrl}</div>
+                <button className="btn btn-secondary btn-sm w-full" onClick={() => copyLink(playerUrl, 'player')}>
+                  {copied === 'player' ? '✓ Copied!' : 'Copy Player Link'}
+                </button>
+              </div>
+              <div className="divider" style={{ margin: 0 }} />
+              <div>
+                <div className="text-dim text-sm" style={{ marginBottom: 4 }}>Scoreboard</div>
+                <div className="text-dim" style={{ fontSize: '0.8rem', wordBreak: 'break-all', marginBottom: 6 }}>{scoreboardUrl}</div>
+                <button className="btn btn-secondary btn-sm w-full" onClick={() => copyLink(scoreboardUrl, 'scoreboard')}>
+                  {copied === 'scoreboard' ? '✓ Copied!' : 'Copy Scoreboard Link'}
+                </button>
+              </div>
             </div>
-            <div className="text-dim text-sm" style={{ wordBreak: 'break-all', marginBottom: 10 }}>
-              {playerUrl}
-            </div>
-            <button
-              className="btn btn-secondary btn-sm w-full"
-              onClick={() => copyLink(playerUrl, 'player')}
-            >
-              {copied === 'player' ? '✓ Copied!' : 'Copy Player Link'}
-            </button>
           </div>
 
-          {/* Scoreboard link */}
+          {/* Options */}
           <div className="card">
-            <div className="section-title">Scoreboard Link</div>
-            <div className="text-dim text-sm" style={{ wordBreak: 'break-all', margin: '8px 0 12px' }}>
-              {scoreboardUrl}
+            <div className="section-title">Options</div>
+            <div className="flex flex-col gap-16">
+
+              {/* QR code display */}
+              <div>
+                <div className="text-dim text-sm" style={{ marginBottom: 8 }}>QR code on scoreboard</div>
+                <div className="flex gap-4" style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius)', padding: 3 }}>
+                  {(['off', 'small', 'big'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      className="btn btn-sm"
+                      style={{
+                        flex: 1,
+                        background: session.qrCodeMode === mode ? 'rgba(255,255,255,0.15)' : 'transparent',
+                        color: session.qrCodeMode === mode ? 'var(--text)' : 'var(--text-dim)',
+                        border: 'none',
+                        textTransform: 'capitalize',
+                      }}
+                      onClick={() => setQrMode(mode)}
+                    >
+                      {mode === 'off' ? 'Off' : mode === 'small' ? 'Small' : 'Full screen'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Team creation */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm" style={{ fontWeight: 600 }}>Player team creation</div>
+                  <div className="text-dim text-sm">Allow players to create new teams</div>
+                </div>
+                <button
+                  className={`btn btn-sm ${session.allowTeamCreation ? 'btn-green' : 'btn-ghost'}`}
+                  onClick={() => toggleTeamCreation(!session.allowTeamCreation)}
+                  style={{ minWidth: 64 }}
+                >
+                  {session.allowTeamCreation ? 'On' : 'Off'}
+                </button>
+              </div>
+
+              {/* Max devices per team */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm" style={{ fontWeight: 600 }}>Max devices per team</div>
+                  <div className="text-dim text-sm">Cap how many devices can join one team</div>
+                </div>
+                <div className="flex items-center gap-8">
+                  {session.maxTeamSize !== null && (
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={session.maxTeamSize}
+                      onChange={(e) => {
+                        const v = Math.max(1, parseInt(e.target.value) || 1);
+                        socket.emit('team:set-max-size', session.code, v);
+                      }}
+                      className="input"
+                      style={{ width: 64, textAlign: 'center', padding: '6px 8px' }}
+                    />
+                  )}
+                  <button
+                    className={`btn btn-sm ${session.maxTeamSize !== null ? 'btn-green' : 'btn-ghost'}`}
+                    onClick={() => socket.emit('team:set-max-size', session.code, session.maxTeamSize !== null ? null : 2)}
+                    style={{ minWidth: 64 }}
+                  >
+                    {session.maxTeamSize !== null ? 'On' : 'Off'}
+                  </button>
+                </div>
+              </div>
+
             </div>
-            <button
-              className="btn btn-secondary btn-sm w-full"
-              onClick={() => copyLink(scoreboardUrl, 'scoreboard')}
-            >
-              {copied === 'scoreboard' ? '✓ Copied!' : 'Copy Scoreboard Link'}
-            </button>
           </div>
         </div>
       </div>

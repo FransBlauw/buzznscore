@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
@@ -23,12 +24,13 @@ interface BuzzEntry {
 interface Session {
   code: string;
   hostSocketId: string;
-  hostToken: string; // secret for host reconnection
+  hostToken: string;
   teams: Map<string, Team>;
   teamsByName: Map<string, string>; // lowercase name → teamId
   buzzingEnabled: boolean;
   allowTeamCreation: boolean;
-  showQrCode: boolean;
+  maxTeamSize: number | null; // null = unlimited
+  qrCodeMode: 'off' | 'small' | 'big';
   buzzOrder: BuzzEntry[];
   buzzedTeams: Set<string>;
 }
@@ -45,7 +47,8 @@ interface SessionState {
   code: string;
   buzzingEnabled: boolean;
   allowTeamCreation: boolean;
-  showQrCode: boolean;
+  maxTeamSize: number | null;
+  qrCodeMode: 'off' | 'small' | 'big';
   teams: TeamState[];
   buzzOrder: BuzzEntry[];
 }
@@ -69,7 +72,8 @@ interface PersistedSession {
   teams: PersistedTeam[];
   buzzingEnabled: boolean;
   allowTeamCreation: boolean;
-  showQrCode: boolean;
+  maxTeamSize: number | null;
+  qrCodeMode: 'off' | 'small' | 'big';
   buzzOrder: BuzzEntry[];
 }
 
@@ -81,13 +85,14 @@ async function loadSessions(): Promise<void> {
     for (const p of Object.values(data)) {
       const session: Session = {
         code: p.code,
-        hostSocketId: '',           // host must rejoin via token
+        hostSocketId: '',
         hostToken: p.hostToken,
         teams: new Map(),
         teamsByName: new Map(),
         buzzingEnabled: p.buzzingEnabled,
         allowTeamCreation: p.allowTeamCreation,
-        showQrCode: p.showQrCode,
+        maxTeamSize: p.maxTeamSize ?? null,
+        qrCodeMode: p.qrCodeMode ?? 'small',
         buzzOrder: p.buzzOrder,
         buzzedTeams: new Set(p.buzzOrder.map((e) => e.teamId)),
       };
@@ -118,7 +123,8 @@ function scheduleSave(): void {
           teams: Array.from(s.teams.values()).map((t) => ({ id: t.id, name: t.name, score: t.score })),
           buzzingEnabled: s.buzzingEnabled,
           allowTeamCreation: s.allowTeamCreation,
-          showQrCode: s.showQrCode,
+          maxTeamSize: s.maxTeamSize,
+          qrCodeMode: s.qrCodeMode,
           buzzOrder: [...s.buzzOrder],
         };
       }
@@ -147,7 +153,8 @@ function toState(session: Session): SessionState {
     code: session.code,
     buzzingEnabled: session.buzzingEnabled,
     allowTeamCreation: session.allowTeamCreation,
-    showQrCode: session.showQrCode,
+    maxTeamSize: session.maxTeamSize,
+    qrCodeMode: session.qrCodeMode,
     teams: Array.from(session.teams.values()).map((t) => ({
       id: t.id,
       name: t.name,
@@ -158,8 +165,19 @@ function toState(session: Session): SessionState {
   };
 }
 
+function peekPayload(session: Session) {
+  return {
+    teams: Array.from(session.teams.values()).map((t) => ({
+      id: t.id, name: t.name, score: t.score, memberCount: t.members.size,
+    })),
+    allowTeamCreation: session.allowTeamCreation,
+    maxTeamSize: session.maxTeamSize,
+  };
+}
+
 function broadcast(io: Server, session: Session) {
   io.to(session.code).emit('session:state', toState(session));
+  io.to(`${session.code}:peek`).emit('session:peek-update', peekPayload(session));
   scheduleSave();
 }
 
@@ -205,7 +223,8 @@ io.on('connection', (socket: Socket) => {
       teamsByName: new Map(),
       buzzingEnabled: false,
       allowTeamCreation: true,
-      showQrCode: true,
+      maxTeamSize: null,
+      qrCodeMode: 'small',
       buzzOrder: [],
       buzzedTeams: new Set(),
     };
@@ -223,10 +242,7 @@ io.on('connection', (socket: Socket) => {
     (code: string, hostToken: string, callback: (state: SessionState | null) => void) => {
       const session = sessions.get(code.toUpperCase().trim());
       if (!session || session.hostToken !== hostToken) { callback(null); return; }
-      // Remove old host socket from room if still present
-      if (session.hostSocketId !== socket.id) {
-        socketMeta.delete(session.hostSocketId);
-      }
+      if (session.hostSocketId !== socket.id) socketMeta.delete(session.hostSocketId);
       session.hostSocketId = socket.id;
       socketMeta.set(socket.id, { sessionCode: session.code, role: 'host' });
       socket.join(session.code);
@@ -238,18 +254,11 @@ io.on('connection', (socket: Socket) => {
   // ── Player: peek at session teams (before joining) ────────────────────────
   socket.on(
     'session:peek',
-    (code: string, callback: (result: { teams: TeamState[]; allowTeamCreation: boolean } | null) => void) => {
+    (code: string, callback: (result: { teams: TeamState[]; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => void) => {
       const session = sessions.get(code.toUpperCase().trim());
       if (!session) { callback(null); return; }
-      callback({
-        allowTeamCreation: session.allowTeamCreation,
-        teams: Array.from(session.teams.values()).map((t) => ({
-          id: t.id,
-          name: t.name,
-          score: t.score,
-          memberCount: t.members.size,
-        })),
-      });
+      socket.join(`${session.code}:peek`);
+      callback(peekPayload(session));
     }
   );
 
@@ -283,9 +292,14 @@ io.on('connection', (socket: Socket) => {
       let teamId: string;
 
       if (session.teamsByName.has(nameKey)) {
-        // Join existing team
+        // Join existing team — enforce size cap
         teamId = session.teamsByName.get(nameKey)!;
-        session.teams.get(teamId)!.members.add(socket.id);
+        const team = session.teams.get(teamId)!;
+        if (session.maxTeamSize !== null && team.members.size >= session.maxTeamSize) {
+          callback({ success: false, error: `That team is full (max ${session.maxTeamSize} device${session.maxTeamSize !== 1 ? 's' : ''}).` });
+          return;
+        }
+        team.members.add(socket.id);
       } else {
         // Create new team — check permission
         if (!session.allowTeamCreation) {
@@ -303,13 +317,14 @@ io.on('connection', (socket: Socket) => {
       }
 
       socketMeta.set(socket.id, { sessionCode: session.code, role: 'player', teamId });
+      socket.leave(`${session.code}:peek`);
       socket.join(session.code);
       callback({ success: true, teamId, state: toState(session) });
       broadcast(io, session);
     }
   );
 
-  // ── Host: create an empty team ───────────────────────────────────────────
+  // ── Host: create an empty team ────────────────────────────────────────────
   socket.on(
     'team:create',
     (code: string, teamName: string, callback: (error?: string) => void) => {
@@ -326,25 +341,20 @@ io.on('connection', (socket: Socket) => {
     }
   );
 
-  // ── Host: delete a team ──────────────────────────────────────────────────
+  // ── Host: delete a team ───────────────────────────────────────────────────
   socket.on('team:delete', (code: string, teamId: string) => {
     const session = sessions.get(code);
     if (!session || session.hostSocketId !== socket.id) return;
     const team = session.teams.get(teamId);
     if (!team) return;
-
-    // Notify and clean up each member
     for (const memberId of team.members) {
       io.to(memberId).emit('team:deleted');
       socketMeta.delete(memberId);
     }
-
-    // Remove from buzz order and buzzed set
     session.buzzOrder = session.buzzOrder.filter((e) => e.teamId !== teamId);
     session.buzzedTeams.delete(teamId);
     session.teamsByName.delete(team.name.toLowerCase());
     session.teams.delete(teamId);
-
     broadcast(io, session);
   });
 
@@ -356,11 +366,19 @@ io.on('connection', (socket: Socket) => {
     broadcast(io, session);
   });
 
-  // ── Host: toggle QR code visibility on scoreboard ────────────────────────
-  socket.on('session:show-qr', (code: string, show: boolean) => {
+  // ── Host: set max team size ───────────────────────────────────────────────
+  socket.on('team:set-max-size', (code: string, max: number | null) => {
     const session = sessions.get(code);
     if (!session || session.hostSocketId !== socket.id) return;
-    session.showQrCode = show;
+    session.maxTeamSize = max;
+    broadcast(io, session);
+  });
+
+  // ── Host: toggle QR code visibility on scoreboard ────────────────────────
+  socket.on('session:qr-mode', (code: string, mode: 'off' | 'small' | 'big') => {
+    const session = sessions.get(code);
+    if (!session || session.hostSocketId !== socket.id) return;
+    session.qrCodeMode = mode;
     broadcast(io, session);
   });
 
@@ -376,15 +394,11 @@ io.on('connection', (socket: Socket) => {
   socket.on('player:buzz', (code: string) => {
     const session = sessions.get(code);
     if (!session || !session.buzzingEnabled) { socket.emit('buzzer:rejected'); return; }
-
     const meta = socketMeta.get(socket.id);
     if (!meta || meta.role !== 'player' || !meta.teamId) return;
-
     if (session.buzzedTeams.has(meta.teamId)) { socket.emit('buzzer:rejected'); return; }
-
     const team = session.teams.get(meta.teamId);
     if (!team) return;
-
     session.buzzedTeams.add(meta.teamId);
     session.buzzOrder.push({ teamId: meta.teamId, teamName: team.name });
     socket.emit('buzzer:accepted');
@@ -437,9 +451,11 @@ io.on('connection', (socket: Socket) => {
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 const PORT = Number(process.env.PORT) || 3001;
+const HOST = process.env.HOST || '0.0.0.0';
 
 loadSessions().then(() => {
-  httpServer.listen(PORT, () => {
-    console.log(`BuzzNScore running on http://localhost:${PORT}`);
+  httpServer.listen(PORT, HOST, () => {
+    const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
+    console.log(`BuzzNScore running on http://${displayHost}:${PORT}`);
   });
 });

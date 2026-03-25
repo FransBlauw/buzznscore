@@ -14,7 +14,8 @@ export interface SessionState {
   code: string;
   buzzingEnabled: boolean;
   allowTeamCreation: boolean;
-  showQrCode: boolean;
+  maxTeamSize: number | null;
+  qrCodeMode: 'off' | 'small' | 'big';
   teams: TeamState[];
   buzzOrder: BuzzEntry[];
 }

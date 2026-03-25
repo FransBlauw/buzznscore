@@ -3,6 +3,8 @@ import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { randomUUID } from 'crypto';
 import path from 'path';
+import { readFile, writeFile, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +28,7 @@ interface Session {
   teamsByName: Map<string, string>; // lowercase name → teamId
   buzzingEnabled: boolean;
   allowTeamCreation: boolean;
+  showQrCode: boolean;
   buzzOrder: BuzzEntry[];
   buzzedTeams: Set<string>;
 }
@@ -42,6 +45,7 @@ interface SessionState {
   code: string;
   buzzingEnabled: boolean;
   allowTeamCreation: boolean;
+  showQrCode: boolean;
   teams: TeamState[];
   buzzOrder: BuzzEntry[];
 }
@@ -53,6 +57,79 @@ const socketMeta = new Map<
   string,
   { sessionCode: string; role: 'host' | 'scoreboard' | 'player'; teamId?: string }
 >();
+
+// ─── Persistence ──────────────────────────────────────────────────────────────
+
+const DATA_FILE = path.resolve('data/sessions.json');
+
+interface PersistedTeam { id: string; name: string; score: number; }
+interface PersistedSession {
+  code: string;
+  hostToken: string;
+  teams: PersistedTeam[];
+  buzzingEnabled: boolean;
+  allowTeamCreation: boolean;
+  showQrCode: boolean;
+  buzzOrder: BuzzEntry[];
+}
+
+async function loadSessions(): Promise<void> {
+  if (!existsSync(DATA_FILE)) return;
+  try {
+    const raw = await readFile(DATA_FILE, 'utf-8');
+    const data = JSON.parse(raw) as Record<string, PersistedSession>;
+    for (const p of Object.values(data)) {
+      const session: Session = {
+        code: p.code,
+        hostSocketId: '',           // host must rejoin via token
+        hostToken: p.hostToken,
+        teams: new Map(),
+        teamsByName: new Map(),
+        buzzingEnabled: p.buzzingEnabled,
+        allowTeamCreation: p.allowTeamCreation,
+        showQrCode: p.showQrCode,
+        buzzOrder: p.buzzOrder,
+        buzzedTeams: new Set(p.buzzOrder.map((e) => e.teamId)),
+      };
+      for (const t of p.teams) {
+        session.teams.set(t.id, { ...t, members: new Set() });
+        session.teamsByName.set(t.name.toLowerCase(), t.id);
+      }
+      sessions.set(p.code, session);
+    }
+    console.log(`Loaded ${Object.keys(data).length} session(s) from ${DATA_FILE}`);
+  } catch (err) {
+    console.error('Failed to load sessions:', err);
+  }
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSave(): void {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await mkdir(path.dirname(DATA_FILE), { recursive: true });
+      const data: Record<string, PersistedSession> = {};
+      for (const [code, s] of sessions) {
+        data[code] = {
+          code: s.code,
+          hostToken: s.hostToken,
+          teams: Array.from(s.teams.values()).map((t) => ({ id: t.id, name: t.name, score: t.score })),
+          buzzingEnabled: s.buzzingEnabled,
+          allowTeamCreation: s.allowTeamCreation,
+          showQrCode: s.showQrCode,
+          buzzOrder: [...s.buzzOrder],
+        };
+      }
+      await writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+    } catch (err) {
+      console.error('Failed to save sessions:', err);
+    }
+  }, 500);
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -70,6 +147,7 @@ function toState(session: Session): SessionState {
     code: session.code,
     buzzingEnabled: session.buzzingEnabled,
     allowTeamCreation: session.allowTeamCreation,
+    showQrCode: session.showQrCode,
     teams: Array.from(session.teams.values()).map((t) => ({
       id: t.id,
       name: t.name,
@@ -82,6 +160,7 @@ function toState(session: Session): SessionState {
 
 function broadcast(io: Server, session: Session) {
   io.to(session.code).emit('session:state', toState(session));
+  scheduleSave();
 }
 
 // ─── Express + Socket.io setup ────────────────────────────────────────────────
@@ -91,7 +170,6 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: '*' } });
 
 // Serve built client (production only — in dev the Vite server handles the client)
-import { existsSync } from 'fs';
 const clientDist = path.join(__dirname, '../client/dist');
 if (existsSync(path.join(clientDist, 'index.html'))) {
   app.use(express.static(clientDist));
@@ -127,6 +205,7 @@ io.on('connection', (socket: Socket) => {
       teamsByName: new Map(),
       buzzingEnabled: false,
       allowTeamCreation: true,
+      showQrCode: true,
       buzzOrder: [],
       buzzedTeams: new Set(),
     };
@@ -134,6 +213,7 @@ io.on('connection', (socket: Socket) => {
     socketMeta.set(socket.id, { sessionCode: code, role: 'host' });
     socket.join(code);
     callback({ state: toState(session), hostToken });
+    scheduleSave();
     console.log(`Session created: ${code}`);
   });
 
@@ -276,6 +356,14 @@ io.on('connection', (socket: Socket) => {
     broadcast(io, session);
   });
 
+  // ── Host: toggle QR code visibility on scoreboard ────────────────────────
+  socket.on('session:show-qr', (code: string, show: boolean) => {
+    const session = sessions.get(code);
+    if (!session || session.hostSocketId !== socket.id) return;
+    session.showQrCode = show;
+    broadcast(io, session);
+  });
+
   // ── Host: enable/disable buzzing ──────────────────────────────────────────
   socket.on('buzzer:enable', (code: string, enabled: boolean) => {
     const session = sessions.get(code);
@@ -349,6 +437,9 @@ io.on('connection', (socket: Socket) => {
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 const PORT = Number(process.env.PORT) || 3001;
-httpServer.listen(PORT, () => {
-  console.log(`BuzzNScore running on http://localhost:${PORT}`);
+
+loadSessions().then(() => {
+  httpServer.listen(PORT, () => {
+    console.log(`BuzzNScore running on http://localhost:${PORT}`);
+  });
 });

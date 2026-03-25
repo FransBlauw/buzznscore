@@ -81,6 +81,9 @@ export function HostView() {
   const toggleTeamCreation = (allowed: boolean) =>
     socket.emit('team:allow-creation', session.code, allowed);
 
+  const toggleQrCode = (show: boolean) =>
+    socket.emit('session:show-qr', session.code, show);
+
   const createTeam = () => {
     const name = newTeamName.trim();
     if (!name) return;
@@ -102,6 +105,11 @@ export function HostView() {
           </div>
         </div>
         <div className="flex gap-8 ml-auto flex-wrap">
+          {session.showQrCode ? (
+            <button className="btn btn-ghost" onClick={() => toggleQrCode(false)}>Hide QR</button>
+          ) : (
+            <button className="btn btn-secondary" onClick={() => toggleQrCode(true)}>Show QR</button>
+          )}
           {session.allowTeamCreation ? (
             <button className="btn btn-ghost" onClick={() => toggleTeamCreation(false)}>Lock Teams</button>
           ) : (

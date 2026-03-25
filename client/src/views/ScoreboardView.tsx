@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { socket } from '../socket';
 import { SessionState } from '../types';
 
@@ -74,6 +75,7 @@ export function ScoreboardView() {
   }
 
   const sortedTeams = [...session.teams].sort((a, b) => b.score - a.score);
+  const playerUrl = `${window.location.origin}?view=player&code=${session.code}`;
 
   return (
     <div className="scoreboard-container">
@@ -88,6 +90,23 @@ export function ScoreboardView() {
               Code: {session.code}
             </div>
           </div>
+          {session.showQrCode && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <QRCodeSVG
+                value={playerUrl}
+                size={72}
+                bgColor="transparent"
+                fgColor="#ffd700"
+                style={{ borderRadius: 6 }}
+              />
+              <div>
+                <div className="text-dim text-sm">Scan to join</div>
+                <div style={{ fontWeight: 700, letterSpacing: '0.12em', color: 'var(--gold)', fontSize: '1.1rem' }}>
+                  {session.code}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="ml-auto">
             {session.buzzingEnabled ? (
               <span className="badge badge-green" style={{ fontSize: '0.9rem', padding: '6px 14px' }}>

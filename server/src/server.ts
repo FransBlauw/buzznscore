@@ -188,7 +188,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: '*' } });
 
 // Serve built client (production only — in dev the Vite server handles the client)
-const clientDist = path.join(__dirname, '../client/dist');
+const clientDist = path.join(__dirname, '../../client/dist');
 if (existsSync(path.join(clientDist, 'index.html'))) {
   app.use(express.static(clientDist));
   app.get('*', (_req, res) => {

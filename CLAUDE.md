@@ -4,19 +4,19 @@ Gameshow buzzer and score management app. Three views per session: Host, Scorebo
 
 ## Stack
 
-- **Server:** Node.js, Express, Socket.io, TypeScript (`src/server.ts`)
-- **Client:** React, Vite, Socket.io-client, TypeScript (`client/src/`)
+- **Server:** Node.js, Express, Socket.io, TypeScript (`server/src/server.ts`)
+- **Client:** React, Vite, Socket.io-client, TypeScript (`client/src`)
 - **Persistence:** `data/sessions.json` (auto-created, written with 500ms debounce)
 
 ## Running
 
 ```bash
 # Dev (two terminals)
-npm run dev              # server on :3001
-cd client && npm run dev # Vite on :5173, proxies /socket.io → :3001
+npm run dev:server              # server on :3001
+npm run dev:client # Vite on :5173, proxies /socket.io → :3001
 
 # Production
-npm run build   # builds client → client/dist, compiles server → dist/
+npm run build   # builds client → client/dist, compiles server → server/dist
 npm start       # serves everything from Express on :3001
 ```
 
@@ -69,7 +69,7 @@ No React Router. `?view=host|player|scoreboard` query param. `App.tsx` switches 
 ## Key files
 
 ```
-src/server.ts                    # all server logic
+server/src/server.ts             # all server logic
 client/src/
   App.tsx                        # view routing
   socket.ts                      # socket singleton (uses VITE_SERVER_URL or origin)

@@ -1,0 +1,52 @@
+{
+  "QWXU2B": {
+    "code": "QWXU2B",
+    "hostToken": "75751618-eb91-4957-bc4a-5322bffd478a",
+    "teams": [],
+    "buzzingEnabled": false,
+    "allowTeamCreation": true,
+    "maxTeamSize": null,
+    "qrCodeMode": "small",
+    "buzzOrder": []
+  },
+  "JLDC5D": {
+    "code": "JLDC5D",
+    "hostToken": "421d1bd6-be3f-4dc4-b45c-bc3c2f03fe76",
+    "teams": [],
+    "buzzingEnabled": false,
+    "allowTeamCreation": true,
+    "maxTeamSize": null,
+    "qrCodeMode": "small",
+    "buzzOrder": []
+  },
+  "MNHD9R": {
+    "code": "MNHD9R",
+    "hostToken": "675b7831-7dda-4534-bfed-b4da7d694c86",
+    "teams": [
+      {
+        "id": "5f9e9d96-6c9a-48d6-b689-6ca7d4508afe",
+        "name": "Team Awesome",
+        "score": 0
+      },
+      {
+        "id": "18dfb5ec-cd58-4bc7-b949-5ffced05f9b0",
+        "name": "Team Fantastic",
+        "score": 5
+      }
+    ],
+    "buzzingEnabled": true,
+    "allowTeamCreation": false,
+    "maxTeamSize": 1,
+    "qrCodeMode": "off",
+    "buzzOrder": [
+      {
+        "teamId": "18dfb5ec-cd58-4bc7-b949-5ffced05f9b0",
+        "teamName": "Team Fantastic"
+      },
+      {
+        "teamId": "5f9e9d96-6c9a-48d6-b689-6ca7d4508afe",
+        "teamName": "Team Awesome"
+      }
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { socket } from '../socket';
 import { SessionState, TeamState } from '../types';
 
@@ -9,27 +9,45 @@ export function HostView() {
   const [teamError, setTeamError] = useState('');
   const [rejoining, setRejoining] = useState(false);
 
+  const [connected, setConnected] = useState(socket.connected);
+  const hasConnectedRef = useRef(false);
+
   useEffect(() => {
     socket.on('session:state', setSession);
 
-    // Attempt to rejoin if the URL already has a code + token
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    const token = params.get('token');
-    if (code && token) {
-      setRejoining(true);
+    const rejoin = (isFirstConnect: boolean) => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const token = params.get('token');
+      if (!code || !token) return;
+      if (isFirstConnect) setRejoining(true);
       socket.emit('host:rejoin', code, token, (state: SessionState | null) => {
         setRejoining(false);
         if (state) {
           setSession(state);
-        } else {
+        } else if (isFirstConnect) {
           // Session expired or token invalid — drop back to create screen
           window.history.replaceState({}, '', '?view=host');
         }
       });
-    }
+    };
 
-    return () => { socket.off('session:state', setSession); };
+    const onConnect = () => {
+      const isFirst = !hasConnectedRef.current;
+      hasConnectedRef.current = true;
+      setConnected(true);
+      rejoin(isFirst);
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', () => setConnected(false));
+
+    if (socket.connected) onConnect();
+
+    return () => {
+      socket.off('session:state', setSession);
+      socket.off('connect', onConnect);
+    };
   }, []);
 
   const createSession = () => {
@@ -108,6 +126,11 @@ export function HostView() {
 
   return (
     <div className="container">
+      {!connected && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, background: 'rgba(255,107,107,0.12)', borderBottom: '1px solid rgba(255,107,107,0.25)', color: '#ff9999', textAlign: 'center', padding: '7px', fontSize: '0.82rem', zIndex: 1000 }}>
+          Reconnecting…
+        </div>
+      )}
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-16" style={{ marginBottom: 24, flexWrap: 'wrap' }}>
         <div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { socket } from '../socket';
 import { SessionState, TeamState } from '../types';
 
@@ -19,6 +19,16 @@ export function PlayerView() {
   const [session, setSession] = useState<SessionState | null>(null);
   const [error, setError] = useState('');
   const [optimisticBuzzed, setOptimisticBuzzed] = useState(false);
+  const [connected, setConnected] = useState(socket.connected);
+  const hasConnectedRef = useRef(false);
+
+  // Refs so the reconnect handler always sees current values without being recreated
+  const stepRef = useRef(step);
+  const codeRef = useRef(code);
+  const teamNameRef = useRef(teamName);
+  stepRef.current = step;
+  codeRef.current = code;
+  teamNameRef.current = teamName;
 
   useEffect(() => {
     const onState = (state: SessionState) => {
@@ -51,13 +61,64 @@ export function PlayerView() {
       setMaxTeamSize(result.maxTeamSize);
     };
 
+    const onConnect = () => {
+      const isFirst = !hasConnectedRef.current;
+      hasConnectedRef.current = true;
+      setConnected(true);
+      if (isFirst) return; // initial mount effects handle the first connection
+
+      const s = stepRef.current;
+      const c = codeRef.current;
+      const tn = teamNameRef.current;
+
+      if (s === 'pick-team' && c) {
+        socket.emit(
+          'session:peek',
+          c,
+          (result: { teams: TeamState[]; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
+            if (!result) { setError('Session not found.'); setStep('enter-code'); return; }
+            setAvailableTeams(result.teams);
+            setTeamCreationAllowed(result.allowTeamCreation);
+            setMaxTeamSize(result.maxTeamSize);
+          }
+        );
+      } else if (s === 'in-game' && c && tn) {
+        socket.emit(
+          'player:join',
+          c,
+          tn,
+          (result: { success: boolean; teamId?: string; state?: SessionState; error?: string }) => {
+            if (!result.success) {
+              setStep('pick-team');
+              setTeamId('');
+              setSession(null);
+              setOptimisticBuzzed(false);
+              setError(result.error ?? 'Could not rejoin team. Please select again.');
+              socket.emit('session:peek', c, (peek: { teams: TeamState[]; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
+                if (peek) { setAvailableTeams(peek.teams); setTeamCreationAllowed(peek.allowTeamCreation); setMaxTeamSize(peek.maxTeamSize); }
+              });
+              return;
+            }
+            setTeamId(result.teamId!);
+            if (result.state) setSession(result.state);
+          }
+        );
+      }
+    };
+
     socket.on('session:state', onState);
     socket.on('session:peek-update', onPeekUpdate);
     socket.on('team:deleted', onTeamDeleted);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', () => setConnected(false));
+
+    if (socket.connected) onConnect();
+
     return () => {
       socket.off('session:state', onState);
       socket.off('session:peek-update', onPeekUpdate);
       socket.off('team:deleted', onTeamDeleted);
+      socket.off('connect', onConnect);
     };
   }, []);
 
@@ -111,10 +172,16 @@ export function PlayerView() {
     return { canBuzz: session.buzzingEnabled && !buzzed, buzzed, position: pos };
   }, [session, step, teamId, optimisticBuzzed]);
 
+  const reconnectBanner = !connected && (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, background: 'rgba(255,107,107,0.12)', borderBottom: '1px solid rgba(255,107,107,0.25)', color: '#ff9999', textAlign: 'center', padding: '7px', fontSize: '0.82rem', zIndex: 1000 }}>
+      Reconnecting…
+    </div>
+  );
+
   // ── Step 1: Enter session code ─────────────────────────────────────────────
   if (step === 'enter-code') {
     return (
-      <div className="container" style={{ paddingTop: 60, maxWidth: 440 }}>
+      <div className="container" style={{ paddingTop: 60, maxWidth: 440 }}>{reconnectBanner}
         <h1 className="title">Join Game</h1>
         <div className="card mt-32">
           <div className="flex flex-col gap-16">
@@ -148,7 +215,7 @@ export function PlayerView() {
   // ── Step 2: Pick or create a team ──────────────────────────────────────────
   if (step === 'pick-team') {
     return (
-      <div className="container" style={{ paddingTop: 60, maxWidth: 480 }}>
+      <div className="container" style={{ paddingTop: 60, maxWidth: 480 }}>{reconnectBanner}
         <h1 className="title">Join Game</h1>
         <p className="subtitle" style={{ marginTop: 6 }}>
           Code: <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{code}</span>
@@ -238,7 +305,7 @@ export function PlayerView() {
   const buzzClass = buzzed ? 'buzz-button-buzzed' : canBuzz ? 'buzz-button-active' : 'buzz-button-waiting';
 
   return (
-    <div className="container text-center" style={{ paddingTop: 32, maxWidth: 500 }}>
+    <div className="container text-center" style={{ paddingTop: 32, maxWidth: 500 }}>{reconnectBanner}
       <div className="text-dim text-sm">Playing as</div>
       <div style={{ fontSize: '1.9rem', fontWeight: 800, marginTop: 4 }}>{teamName}</div>
 

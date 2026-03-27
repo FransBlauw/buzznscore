@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { socket } from '../socket';
 import { SessionState } from '../types';
@@ -10,10 +10,36 @@ export function ScoreboardView() {
   const [session, setSession] = useState<SessionState | null>(null);
   const [error, setError] = useState('');
   const [watching, setWatching] = useState(false);
+  const [connected, setConnected] = useState(socket.connected);
+  const hasConnectedRef = useRef(false);
+
+  // Refs so reconnect handler always sees current values
+  const watchingRef = useRef(watching);
+  const codeRef = useRef(code);
+  watchingRef.current = watching;
+  codeRef.current = code;
 
   useEffect(() => {
+    const onConnect = () => {
+      const isFirst = !hasConnectedRef.current;
+      hasConnectedRef.current = true;
+      setConnected(true);
+      if (isFirst || !watchingRef.current) return;
+      socket.emit('scoreboard:watch', codeRef.current, (state: SessionState | null) => {
+        if (state) setSession(state);
+      });
+    };
+
     socket.on('session:state', setSession);
-    return () => { socket.off('session:state', setSession); };
+    socket.on('connect', onConnect);
+    socket.on('disconnect', () => setConnected(false));
+
+    if (socket.connected) onConnect();
+
+    return () => {
+      socket.off('session:state', setSession);
+      socket.off('connect', onConnect);
+    };
   }, []);
 
   // Auto-watch when a code is in the URL
@@ -79,6 +105,11 @@ export function ScoreboardView() {
 
   return (
     <div className="scoreboard-container">
+      {!connected && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, background: 'rgba(255,107,107,0.12)', borderBottom: '1px solid rgba(255,107,107,0.25)', color: '#ff9999', textAlign: 'center', padding: '7px', fontSize: '0.82rem', zIndex: 1000 }}>
+          Reconnecting…
+        </div>
+      )}
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="scoreboard-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>

@@ -210,7 +210,7 @@ export function HostView() {
                 {session.buzzOrder.map((entry, i) => (
                   <div key={entry.teamId} className="buzz-entry">
                     <span className={`buzz-rank buzz-rank-${i + 1}`}>
-                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                      {`#${i + 1}`}
                     </span>
                     <span className="font-bold">{entry.teamName}</span>
                   </div>

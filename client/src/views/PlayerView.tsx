@@ -323,7 +323,7 @@ export function PlayerView() {
 
       {buzzed && position >= 0 && (
         <div style={{ fontSize: '1.3rem', fontWeight: 800, marginTop: 4 }}>
-          {position === 0 ? '🥇 You were first!' : position === 1 ? '🥈 Second place' : position === 2 ? '🥉 Third place' : `You buzzed in #${position + 1}`}
+          {position === 0 ? '#1 You were first!' : position === 1 ? '#2 Second place' : position === 2 ? '#3 Third place' : `You buzzed in #${position + 1}`}
         </div>
       )}
       {buzzed && position < 0 && (

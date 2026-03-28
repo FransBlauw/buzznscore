@@ -224,19 +224,27 @@ export function HostView() {
               <p className="text-dim text-sm">No buzzes yet this round.</p>
             ) : (
               <div className="flex flex-col gap-8">
-                {session.buzzOrder.map((entry, i) => (
-                  <div key={entry.teamId} className="buzz-entry">
-                    <span className={`buzz-rank buzz-rank-${i + 1}`}>
-                      {`#${i + 1}`}
-                    </span>
-                    <span className="font-bold" style={{ flex: 1 }}>{entry.teamName}</span>
-                    <button
-                      className="btn btn-ghost"
-                      style={{ padding: '2px 10px', fontSize: '0.8rem' }}
-                      onClick={() => socket.emit('buzzer:unbuzz', session.code, entry.teamId)}
-                    >✕</button>
-                  </div>
-                ))}
+                {session.buzzOrder.map((entry, i) => {
+                  const prevMs = i === 0 ? session.buzzingOpenedAt : session.buzzOrder[i - 1].buzzedAt;
+                  const deltaMs = prevMs != null ? entry.buzzedAt - prevMs : null;
+                  const deltaLabel = deltaMs != null ? `+${(deltaMs / 1000).toFixed(2)}s` : null;
+                  return (
+                    <div key={entry.teamId} className="buzz-entry">
+                      <span className={`buzz-rank buzz-rank-${i + 1}`}>
+                        {`#${i + 1}`}
+                      </span>
+                      <span className="font-bold" style={{ flex: 1 }}>{entry.teamName}</span>
+                      {deltaLabel && (
+                        <span className="text-dim" style={{ fontSize: '0.78rem', marginRight: 6 }}>{deltaLabel}</span>
+                      )}
+                      <button
+                        className="btn btn-ghost"
+                        style={{ padding: '2px 10px', fontSize: '0.8rem' }}
+                        onClick={() => socket.emit('buzzer:unbuzz', session.code, entry.teamId)}
+                      >✕</button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

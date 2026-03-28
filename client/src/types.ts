@@ -8,6 +8,7 @@ export interface TeamState {
 export interface BuzzEntry {
   teamId: string;
   teamName: string;
+  buzzedAt: number; // ms epoch
 }
 
 export interface SessionState {
@@ -19,6 +20,7 @@ export interface SessionState {
   qrCodeMode: 'off' | 'small' | 'big';
   teams: TeamState[];
   buzzOrder: BuzzEntry[];
+  buzzingOpenedAt: number | null;
   scoreboardCount: number;
   waitingCount: number;
 }

@@ -19,6 +19,7 @@ interface Team {
 interface BuzzEntry {
   teamId: string;
   teamName: string;
+  buzzedAt: number; // ms epoch
 }
 
 interface Session {
@@ -34,6 +35,7 @@ interface Session {
   qrCodeMode: 'off' | 'small' | 'big';
   buzzOrder: BuzzEntry[];
   buzzedTeams: Set<string>;
+  buzzingOpenedAt: number | null; // ms epoch when buzzing was last enabled
 }
 
 // Serialisable snapshot sent to clients
@@ -53,6 +55,7 @@ interface SessionState {
   qrCodeMode: 'off' | 'small' | 'big';
   teams: TeamState[];
   buzzOrder: BuzzEntry[];
+  buzzingOpenedAt: number | null;
   scoreboardCount: number;
   waitingCount: number;
 }
@@ -101,6 +104,7 @@ async function loadSessions(): Promise<void> {
         qrCodeMode: p.qrCodeMode ?? 'small',
         buzzOrder: p.buzzOrder,
         buzzedTeams: new Set(p.buzzOrder.map((e) => e.teamId)),
+        buzzingOpenedAt: null,
       };
       for (const t of p.teams) {
         session.teams.set(t.id, { ...t, members: new Set() });
@@ -176,6 +180,7 @@ function toState(session: Session, io?: Server): SessionState {
       memberCount: t.members.size,
     })),
     buzzOrder: [...session.buzzOrder],
+    buzzingOpenedAt: session.buzzingOpenedAt,
     scoreboardCount,
     waitingCount,
   };
@@ -245,6 +250,7 @@ io.on('connection', (socket: Socket) => {
       qrCodeMode: 'small',
       buzzOrder: [],
       buzzedTeams: new Set(),
+      buzzingOpenedAt: null,
     };
     sessions.set(code, session);
     socketMeta.set(socket.id, { sessionCode: code, role: 'host' });
@@ -469,6 +475,7 @@ io.on('connection', (socket: Socket) => {
     const session = sessions.get(code);
     if (!session || !session.hostSockets.has(socket.id)) return;
     session.buzzingEnabled = enabled;
+    if (enabled) session.buzzingOpenedAt = Date.now();
     broadcast(io, session);
   });
 
@@ -482,7 +489,7 @@ io.on('connection', (socket: Socket) => {
     const team = session.teams.get(meta.teamId);
     if (!team) return;
     session.buzzedTeams.add(meta.teamId);
-    session.buzzOrder.push({ teamId: meta.teamId, teamName: team.name });
+    session.buzzOrder.push({ teamId: meta.teamId, teamName: team.name, buzzedAt: Date.now() });
     socket.emit('buzzer:accepted');
     broadcast(io, session);
   });

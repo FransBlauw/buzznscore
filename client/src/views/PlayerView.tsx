@@ -7,10 +7,14 @@ type Step = 'enter-code' | 'pick-team' | 'in-game';
 export function PlayerView() {
   const params = new URLSearchParams(window.location.search);
   const initialCode = (params.get('code') ?? '').toUpperCase();
+  const initialTeamId = params.get('teamId') ?? '';
 
-  const [step, setStep] = useState<Step>(initialCode ? 'pick-team' : 'enter-code');
+  const [step, setStep] = useState<Step>(
+    initialCode && initialTeamId ? 'in-game' : initialCode ? 'pick-team' : 'enter-code'
+  );
   const [code, setCode] = useState(initialCode);
   const [availableTeams, setAvailableTeams] = useState<TeamState[]>([]);
+  const [joiningEnabled, setJoiningEnabled] = useState(true);
   const [teamCreationAllowed, setTeamCreationAllowed] = useState(true);
   const [maxTeamSize, setMaxTeamSize] = useState<number | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
@@ -33,6 +37,7 @@ export function PlayerView() {
   useEffect(() => {
     const onState = (state: SessionState) => {
       setSession(state);
+      setJoiningEnabled(state.joiningEnabled);
       setTeamCreationAllowed(state.allowTeamCreation);
       setMaxTeamSize(state.maxTeamSize);
       if (!state.buzzingEnabled && state.buzzOrder.length === 0) {
@@ -40,6 +45,9 @@ export function PlayerView() {
       }
     };
     const onTeamDeleted = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('teamId');
+      window.history.replaceState({}, '', url.toString());
       setStep('pick-team');
       setTeamId('');
       setTeamName('');
@@ -50,13 +58,14 @@ export function PlayerView() {
       socket.emit(
         'session:peek',
         code,
-        (result: { teams: TeamState[]; allowTeamCreation: boolean } | null) => {
-          if (result) { setAvailableTeams(result.teams); setTeamCreationAllowed(result.allowTeamCreation); }
+        (result: { teams: TeamState[]; joiningEnabled: boolean; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
+          if (result) { setAvailableTeams(result.teams); setJoiningEnabled(result.joiningEnabled); setTeamCreationAllowed(result.allowTeamCreation); setMaxTeamSize(result.maxTeamSize); }
         }
       );
     };
-    const onPeekUpdate = (result: { teams: TeamState[]; allowTeamCreation: boolean; maxTeamSize: number | null }) => {
+    const onPeekUpdate = (result: { teams: TeamState[]; joiningEnabled: boolean; allowTeamCreation: boolean; maxTeamSize: number | null }) => {
       setAvailableTeams(result.teams);
+      setJoiningEnabled(result.joiningEnabled);
       setTeamCreationAllowed(result.allowTeamCreation);
       setMaxTeamSize(result.maxTeamSize);
     };
@@ -75,9 +84,10 @@ export function PlayerView() {
         socket.emit(
           'session:peek',
           c,
-          (result: { teams: TeamState[]; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
+          (result: { teams: TeamState[]; joiningEnabled: boolean; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
             if (!result) { setError('Session not found.'); setStep('enter-code'); return; }
             setAvailableTeams(result.teams);
+            setJoiningEnabled(result.joiningEnabled);
             setTeamCreationAllowed(result.allowTeamCreation);
             setMaxTeamSize(result.maxTeamSize);
           }
@@ -87,6 +97,7 @@ export function PlayerView() {
           'player:join',
           c,
           tn,
+          true,
           (result: { success: boolean; teamId?: string; state?: SessionState; error?: string }) => {
             if (!result.success) {
               setStep('pick-team');
@@ -94,8 +105,11 @@ export function PlayerView() {
               setSession(null);
               setOptimisticBuzzed(false);
               setError(result.error ?? 'Could not rejoin team. Please select again.');
-              socket.emit('session:peek', c, (peek: { teams: TeamState[]; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
-                if (peek) { setAvailableTeams(peek.teams); setTeamCreationAllowed(peek.allowTeamCreation); setMaxTeamSize(peek.maxTeamSize); }
+              const url = new URL(window.location.href);
+              url.searchParams.delete('teamId');
+              window.history.replaceState({}, '', url.toString());
+              socket.emit('session:peek', c, (peek: { teams: TeamState[]; joiningEnabled: boolean; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
+                if (peek) { setAvailableTeams(peek.teams); setJoiningEnabled(peek.joiningEnabled); setTeamCreationAllowed(peek.allowTeamCreation); setMaxTeamSize(peek.maxTeamSize); }
               });
               return;
             }
@@ -122,9 +136,31 @@ export function PlayerView() {
     };
   }, []);
 
-  // If code was in the URL, peek immediately on mount
+  // On mount: rejoin by teamId if present, otherwise peek if code is in URL
   useEffect(() => {
-    if (initialCode) peekSession(initialCode);
+    if (initialCode && initialTeamId) {
+      socket.emit(
+        'player:rejoin',
+        initialCode,
+        initialTeamId,
+        (result: { success: boolean; teamId?: string; teamName?: string; state?: SessionState; error?: string }) => {
+          if (!result.success) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('teamId');
+            window.history.replaceState({}, '', url.toString());
+            setStep('pick-team');
+            setError(result.error ?? 'Could not rejoin. Please select a team.');
+            peekSession(initialCode);
+            return;
+          }
+          setTeamId(result.teamId!);
+          setTeamName(result.teamName!);
+          if (result.state) setSession(result.state);
+        }
+      );
+    } else if (initialCode) {
+      peekSession(initialCode);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -133,9 +169,10 @@ export function PlayerView() {
     socket.emit(
       'session:peek',
       sessionCode,
-      (result: { teams: TeamState[]; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
+      (result: { teams: TeamState[]; joiningEnabled: boolean; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
         if (!result) { setError('Session not found.'); setStep('enter-code'); return; }
         setAvailableTeams(result.teams);
+        setJoiningEnabled(result.joiningEnabled);
         setTeamCreationAllowed(result.allowTeamCreation);
         setMaxTeamSize(result.maxTeamSize);
         setStep('pick-team');
@@ -148,6 +185,7 @@ export function PlayerView() {
       'player:join',
       code,
       name,
+      false,
       (result: { success: boolean; teamId?: string; state?: SessionState; error?: string }) => {
         if (!result.success) { setError(result.error ?? 'Failed to join'); return; }
         setTeamId(result.teamId!);
@@ -155,6 +193,9 @@ export function PlayerView() {
         if (result.state) setSession(result.state);
         setStep('in-game');
         setError('');
+        const url = new URL(window.location.href);
+        url.searchParams.set('teamId', result.teamId!);
+        window.history.replaceState({}, '', url.toString());
       }
     );
   };
@@ -221,6 +262,14 @@ export function PlayerView() {
           Code: <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{code}</span>
         </p>
 
+        {/* Joining disabled banner */}
+        {!joiningEnabled && (
+          <div className="card mt-24" style={{ background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.2)', textAlign: 'center' }}>
+            <div style={{ fontWeight: 700, color: '#ff9999', marginBottom: 4 }}>Joining is currently disabled</div>
+            <div className="text-dim text-sm">Wait for the host to open joining.</div>
+          </div>
+        )}
+
         {/* Existing teams */}
         {availableTeams.length > 0 && (
           <div className="card mt-24">
@@ -228,22 +277,23 @@ export function PlayerView() {
             <div className="flex flex-col gap-8">
               {availableTeams.map((team) => {
                 const isFull = maxTeamSize !== null && team.memberCount >= maxTeamSize;
+                const isDisabled = isFull || !joiningEnabled;
                 return (
                   <button
                     key={team.id}
                     className="team-card"
-                    disabled={isFull}
+                    disabled={isDisabled}
                     style={{
-                      cursor: isFull ? 'not-allowed' : 'pointer',
+                      cursor: isDisabled ? 'not-allowed' : 'pointer',
                       background: 'rgba(255,255,255,0.04)',
                       border: '1px solid rgba(255,255,255,0.08)',
                       borderRadius: 'var(--radius)',
                       width: '100%',
                       textAlign: 'left',
                       color: 'var(--text)',
-                      opacity: isFull ? 0.5 : 1,
+                      opacity: isDisabled ? 0.5 : 1,
                     }}
-                    onClick={() => !isFull && joinTeam(team.name)}
+                    onClick={() => !isDisabled && joinTeam(team.name)}
                   >
                     <div style={{ flex: 1 }}>
                       <div className="team-name">{team.name}</div>
@@ -261,8 +311,8 @@ export function PlayerView() {
           </div>
         )}
 
-        {/* Create new team — hidden when host has locked team creation */}
-        {teamCreationAllowed && (
+        {/* Create new team — hidden when host has locked team creation or joining */}
+        {teamCreationAllowed && joiningEnabled && (
           <div className="card mt-16">
             <div className="section-title">
               {availableTeams.length === 0 ? 'Create your team' : 'Or create a new team'}

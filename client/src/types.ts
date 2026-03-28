@@ -13,6 +13,7 @@ export interface BuzzEntry {
 export interface SessionState {
   code: string;
   buzzingEnabled: boolean;
+  joiningEnabled: boolean;
   allowTeamCreation: boolean;
   maxTeamSize: number | null;
   qrCodeMode: 'off' | 'small' | 'big';

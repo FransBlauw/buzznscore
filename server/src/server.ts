@@ -28,6 +28,7 @@ interface Session {
   teams: Map<string, Team>;
   teamsByName: Map<string, string>; // lowercase name → teamId
   buzzingEnabled: boolean;
+  joiningEnabled: boolean;
   allowTeamCreation: boolean;
   maxTeamSize: number | null; // null = unlimited
   qrCodeMode: 'off' | 'small' | 'big';
@@ -46,6 +47,7 @@ interface TeamState {
 interface SessionState {
   code: string;
   buzzingEnabled: boolean;
+  joiningEnabled: boolean;
   allowTeamCreation: boolean;
   maxTeamSize: number | null;
   qrCodeMode: 'off' | 'small' | 'big';
@@ -71,6 +73,7 @@ interface PersistedSession {
   hostToken: string;
   teams: PersistedTeam[];
   buzzingEnabled: boolean;
+  joiningEnabled: boolean;
   allowTeamCreation: boolean;
   maxTeamSize: number | null;
   qrCodeMode: 'off' | 'small' | 'big';
@@ -90,6 +93,7 @@ async function loadSessions(): Promise<void> {
         teams: new Map(),
         teamsByName: new Map(),
         buzzingEnabled: p.buzzingEnabled,
+        joiningEnabled: p.joiningEnabled ?? true,
         allowTeamCreation: p.allowTeamCreation,
         maxTeamSize: p.maxTeamSize ?? null,
         qrCodeMode: p.qrCodeMode ?? 'small',
@@ -122,6 +126,7 @@ function scheduleSave(): void {
           hostToken: s.hostToken,
           teams: Array.from(s.teams.values()).map((t) => ({ id: t.id, name: t.name, score: t.score })),
           buzzingEnabled: s.buzzingEnabled,
+          joiningEnabled: s.joiningEnabled,
           allowTeamCreation: s.allowTeamCreation,
           maxTeamSize: s.maxTeamSize,
           qrCodeMode: s.qrCodeMode,
@@ -152,6 +157,7 @@ function toState(session: Session): SessionState {
   return {
     code: session.code,
     buzzingEnabled: session.buzzingEnabled,
+    joiningEnabled: session.joiningEnabled,
     allowTeamCreation: session.allowTeamCreation,
     maxTeamSize: session.maxTeamSize,
     qrCodeMode: session.qrCodeMode,
@@ -170,6 +176,7 @@ function peekPayload(session: Session) {
     teams: Array.from(session.teams.values()).map((t) => ({
       id: t.id, name: t.name, score: t.score, memberCount: t.members.size,
     })),
+    joiningEnabled: session.joiningEnabled,
     allowTeamCreation: session.allowTeamCreation,
     maxTeamSize: session.maxTeamSize,
   };
@@ -222,6 +229,7 @@ io.on('connection', (socket: Socket) => {
       teams: new Map(),
       teamsByName: new Map(),
       buzzingEnabled: false,
+      joiningEnabled: true,
       allowTeamCreation: true,
       maxTeamSize: null,
       qrCodeMode: 'small',
@@ -280,13 +288,21 @@ io.on('connection', (socket: Socket) => {
     (
       code: string,
       teamName: string,
-      callback: (result: { success: boolean; teamId?: string; state?: SessionState; error?: string }) => void
+      isRejoinOrCallback: boolean | ((result: { success: boolean; teamId?: string; state?: SessionState; error?: string }) => void),
+      maybeCallback?: (result: { success: boolean; teamId?: string; state?: SessionState; error?: string }) => void
     ) => {
+      const isRejoin = typeof isRejoinOrCallback === 'boolean' ? isRejoinOrCallback : false;
+      const callback = (typeof isRejoinOrCallback === 'function' ? isRejoinOrCallback : maybeCallback)!;
       const session = sessions.get(code.toUpperCase().trim());
       if (!session) { callback({ success: false, error: 'Session not found' }); return; }
 
       const name = teamName.trim();
       if (!name) { callback({ success: false, error: 'Name is required' }); return; }
+
+      if (!session.joiningEnabled && !isRejoin) {
+        callback({ success: false, error: 'The host has disabled joining. Please wait.' });
+        return;
+      }
 
       const nameKey = name.toLowerCase();
       let teamId: string;
@@ -324,6 +340,27 @@ io.on('connection', (socket: Socket) => {
     }
   );
 
+  // ── Player: rejoin after page refresh (by teamId) ────────────────────────
+  socket.on(
+    'player:rejoin',
+    (
+      code: string,
+      teamId: string,
+      callback: (result: { success: boolean; teamId?: string; teamName?: string; state?: SessionState; error?: string }) => void
+    ) => {
+      const session = sessions.get(code.toUpperCase().trim());
+      if (!session) { callback({ success: false, error: 'Session not found' }); return; }
+      const team = session.teams.get(teamId);
+      if (!team) { callback({ success: false, error: 'Team not found' }); return; }
+      team.members.add(socket.id);
+      socketMeta.set(socket.id, { sessionCode: session.code, role: 'player', teamId });
+      socket.leave(`${session.code}:peek`);
+      socket.join(session.code);
+      callback({ success: true, teamId, teamName: team.name, state: toState(session) });
+      broadcast(io, session);
+    }
+  );
+
   // ── Host: create an empty team ────────────────────────────────────────────
   socket.on(
     'team:create',
@@ -355,6 +392,14 @@ io.on('connection', (socket: Socket) => {
     session.buzzedTeams.delete(teamId);
     session.teamsByName.delete(team.name.toLowerCase());
     session.teams.delete(teamId);
+    broadcast(io, session);
+  });
+
+  // ── Host: enable/disable player joining ──────────────────────────────────
+  socket.on('session:joining', (code: string, enabled: boolean) => {
+    const session = sessions.get(code);
+    if (!session || session.hostSocketId !== socket.id) return;
+    session.joiningEnabled = enabled;
     broadcast(io, session);
   });
 

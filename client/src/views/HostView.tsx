@@ -108,6 +108,9 @@ export function HostView() {
   const adjustScore    = (teamId: string, delta: number) =>
     socket.emit('score:adjust', session.code, teamId, delta);
 
+  const toggleJoining = (enabled: boolean) =>
+    socket.emit('session:joining', session.code, enabled);
+
   const toggleTeamCreation = (allowed: boolean) =>
     socket.emit('team:allow-creation', session.code, allowed);
 
@@ -271,6 +274,21 @@ export function HostView() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Player joining */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm" style={{ fontWeight: 600 }}>Player joining</div>
+                  <div className="text-dim text-sm">Allow players to join or create teams</div>
+                </div>
+                <button
+                  className={`btn btn-sm ${session.joiningEnabled ? 'btn-green' : 'btn-ghost'}`}
+                  onClick={() => toggleJoining(!session.joiningEnabled)}
+                  style={{ minWidth: 64 }}
+                >
+                  {session.joiningEnabled ? 'Open' : 'Locked'}
+                </button>
               </div>
 
               {/* Team creation */}

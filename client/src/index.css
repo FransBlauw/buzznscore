@@ -276,6 +276,71 @@ body {
   text-align: right;
 }
 
+/* ── Scoreboard top-3 cards ────────────────────────────────────────────────── */
+.scoreboard-top {
+  display: flex;
+  gap: 16px;
+  padding: 24px;
+}
+.top-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 28px 20px 22px;
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.top-card.rank-1 {
+  border-color: rgba(255,215,0,0.5);
+  box-shadow: 0 0 32px rgba(255,215,0,0.12), inset 0 0 24px rgba(255,215,0,0.04);
+  padding-top: 36px;
+  padding-bottom: 30px;
+}
+.top-card.rank-2 {
+  border-color: rgba(192,192,192,0.4);
+  box-shadow: 0 0 24px rgba(192,192,192,0.08);
+}
+.top-card.rank-3 {
+  border-color: rgba(205,127,50,0.4);
+  box-shadow: 0 0 24px rgba(205,127,50,0.08);
+}
+.top-card-medal { font-size: 2rem; line-height: 1; }
+.top-card-name  { font-size: clamp(1.1rem, 2.5vw, 1.5rem); font-weight: 700; }
+.top-card-score {
+  font-size: clamp(2.8rem, 5vw, 4.5rem);
+  font-weight: 900;
+  color: var(--gold);
+  line-height: 1;
+}
+.top-card-meta  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+/* ── Scoreboard rest grid ──────────────────────────────────────────────────── */
+.scoreboard-rest {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  padding: 0 24px 24px;
+}
+.rest-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 18px 14px 14px;
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.rest-card-rank  { font-size: 0.8rem; font-weight: 800; color: var(--text-dim); }
+.rest-card-name  { font-size: clamp(0.95rem, 2vw, 1.1rem); font-weight: 700; }
+.rest-card-score { font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 900; color: var(--gold); line-height: 1; }
+.rest-card-meta  { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
+
 /* ── Flex utilities ────────────────────────────────────────────────────────── */
 .flex      { display: flex; }
 .flex-col  { flex-direction: column; }

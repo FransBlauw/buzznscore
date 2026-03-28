@@ -101,6 +101,8 @@ export function ScoreboardView() {
   }
 
   const sortedTeams = [...session.teams].sort((a, b) => b.score - a.score);
+  const topTeams = sortedTeams.slice(0, 3);
+  const restTeams = sortedTeams.slice(3);
   const playerUrl = `${window.location.origin}?view=player&code=${session.code}`;
 
   return (
@@ -170,35 +172,60 @@ export function ScoreboardView() {
       )}
 
       {/* ── Scores ──────────────────────────────────────────────────────── */}
-      <div>
-        {sortedTeams.map((team, i) => {
-          const buzzPos = session.buzzOrder.findIndex((e) => e.teamId === team.id);
-          return (
-            <div key={team.id} className="score-row">
-              <div className={`score-rank-label rank-${i + 1}`}>
-                {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
-              </div>
-              <div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{team.name}</div>
-                <div className="text-dim text-sm" style={{ display: 'flex', gap: 8 }}>
-                  <span>{team.memberCount} player{team.memberCount !== 1 ? 's' : ''}</span>
-                  {buzzPos >= 0 && (
-                    <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
-                      buzzed #{buzzPos + 1}
-                    </span>
-                  )}
+      {sortedTeams.length === 0 ? (
+        <div className="text-center text-dim" style={{ padding: '64px 24px' }}>
+          Waiting for teams to join…
+        </div>
+      ) : (
+        <>
+          {/* Top 3 */}
+          <div className="scoreboard-top">
+            {topTeams.map((team, i) => {
+              const medals = ['🥇', '🥈', '🥉'];
+              const buzzPos = session.buzzOrder.findIndex((e) => e.teamId === team.id);
+              return (
+                <div key={team.id} className={`top-card rank-${i + 1}`}>
+                  <div className="top-card-medal">{medals[i]}</div>
+                  <div className="top-card-name">{team.name}</div>
+                  <div className="top-card-score">{team.score}</div>
+                  <div className="top-card-meta text-dim text-sm">
+                    <span>{team.memberCount} player{team.memberCount !== 1 ? 's' : ''}</span>
+                    {buzzPos >= 0 && (
+                      <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
+                        buzzed #{buzzPos + 1}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="score-value">{team.score}</div>
-            </div>
-          );
-        })}
-        {sortedTeams.length === 0 && (
-          <div className="text-center text-dim" style={{ padding: '64px 24px' }}>
-            Waiting for teams to join…
+              );
+            })}
           </div>
-        )}
-      </div>
+
+          {/* Remaining teams */}
+          {restTeams.length > 0 && (
+            <div className="scoreboard-rest">
+              {restTeams.map((team, i) => {
+                const buzzPos = session.buzzOrder.findIndex((e) => e.teamId === team.id);
+                return (
+                  <div key={team.id} className="rest-card">
+                    <div className="rest-card-rank">#{i + 4}</div>
+                    <div className="rest-card-name">{team.name}</div>
+                    <div className="rest-card-score">{team.score}</div>
+                    <div className="rest-card-meta text-dim text-sm">
+                      <span>{team.memberCount} player{team.memberCount !== 1 ? 's' : ''}</span>
+                      {buzzPos >= 0 && (
+                        <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
+                          buzzed #{buzzPos + 1}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
 
       {/* ── Big QR overlay ──────────────────────────────────────────────── */}
       {session.qrCodeMode === 'big' && (

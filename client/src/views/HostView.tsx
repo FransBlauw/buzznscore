@@ -49,6 +49,15 @@ export function HostView() {
   const hasConnectedRef = useRef(false);
 
   useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (!params.get('code')) setSession(null);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
     socket.on('session:state', setSession);
 
     const rejoin = (code: string, token: string, isFirstConnect: boolean) => {
@@ -93,7 +102,7 @@ export function HostView() {
     socket.emit('session:create', (result: { state: SessionState; hostToken: string }) => {
       const { code } = result.state;
       const token = result.hostToken;
-      window.history.replaceState({}, '', `?view=host&code=${code}&token=${token}`);
+      window.history.pushState({}, '', `?view=host&code=${code}&token=${token}`);
       persistSession(code, token);
       setSavedSessions(loadSavedSessions());
       setSession(result.state);
@@ -101,7 +110,7 @@ export function HostView() {
   };
 
   const continueSession = (saved: SavedSession) => {
-    window.history.replaceState({}, '', `?view=host&code=${saved.code}&token=${saved.token}`);
+    window.history.pushState({}, '', `?view=host&code=${saved.code}&token=${saved.token}`);
     setRejoining(true);
     socket.emit('host:rejoin', saved.code, saved.token, (state: SessionState | null) => {
       setRejoining(false);

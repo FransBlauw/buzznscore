@@ -8,6 +8,7 @@ export function HostView() {
   const [copied, setCopied] = useState('');
   const [newTeamName, setNewTeamName] = useState('');
   const [teamError, setTeamError] = useState('');
+  const [editTeams, setEditTeams] = useState(false);
   const [rejoining, setRejoining] = useState(false);
 
   const [connected, setConnected] = useState(socket.connected);
@@ -163,9 +164,17 @@ export function HostView() {
           <div className="card">
             <div className="flex items-center" style={{ marginBottom: 12 }}>
               <div className="section-title" style={{ marginBottom: 0 }}>Teams &amp; Scores</div>
-              {session.buzzingEnabled && (
-                <span className="badge badge-green ml-auto">BUZZING OPEN</span>
-              )}
+              <div className="flex items-center gap-8 ml-auto">
+                {session.buzzingEnabled && (
+                  <span className="badge badge-green">BUZZING OPEN</span>
+                )}
+                <button
+                  className={`btn btn-sm ${editTeams ? 'btn-secondary' : 'btn-ghost'}`}
+                  onClick={() => setEditTeams(v => !v)}
+                >
+                  {editTeams ? 'Done' : 'Edit'}
+                </button>
+              </div>
             </div>
             {session.teams.length === 0 ? (
               <p className="text-dim text-sm" style={{ marginBottom: 12 }}>No teams yet.</p>
@@ -180,6 +189,7 @@ export function HostView() {
                       buzzedPosition={session.buzzOrder.findIndex((e) => e.teamId === team.id)}
                       onAdjust={(d) => adjustScore(team.id, d)}
                       onDelete={() => socket.emit('team:delete', session.code, team.id)}
+                      editMode={editTeams}
                     />
                   ))}
               </div>
@@ -442,13 +452,19 @@ function TeamRow({
   buzzedPosition,
   onAdjust,
   onDelete,
+  editMode,
 }: {
   team: TeamState;
   buzzedPosition: number;
   onAdjust: (delta: number) => void;
   onDelete: () => void;
+  editMode: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    if (!editMode) setConfirming(false);
+  }, [editMode]);
 
   const handleDelete = () => {
     if (confirming) {
@@ -460,7 +476,7 @@ function TeamRow({
 
   return (
     <div className="team-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-      <div className="flex items-center gap-8">
+      <div className="flex items-center gap-8 team-row-inner">
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="team-name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {team.name}
@@ -489,21 +505,23 @@ function TeamRow({
         </div>
       </div>
 
-      {/* Delete / confirm row */}
-      {confirming ? (
-        <div className="flex gap-8 items-center" style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-          <span className="text-sm" style={{ color: '#ff6b6b', flex: 1 }}>
-            Delete {team.name}?{team.memberCount > 0 ? ` (${team.memberCount} player${team.memberCount !== 1 ? 's' : ''} will be removed)` : ''}
-          </span>
-          <button className="btn btn-red btn-sm" onClick={handleDelete}>Yes, delete</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setConfirming(false)}>Cancel</button>
-        </div>
-      ) : (
-        <div className="flex" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }} onClick={handleDelete}>
-            Delete team
-          </button>
-        </div>
+      {/* Delete / confirm row — only visible in edit mode */}
+      {editMode && (
+        confirming ? (
+          <div className="flex gap-8 items-center" style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+            <span className="text-sm" style={{ color: '#ff6b6b', flex: 1 }}>
+              Delete {team.name}?{team.memberCount > 0 ? ` (${team.memberCount} player${team.memberCount !== 1 ? 's' : ''} will be removed)` : ''}
+            </span>
+            <button className="btn btn-red btn-sm" onClick={handleDelete}>Yes, delete</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setConfirming(false)}>Cancel</button>
+          </div>
+        ) : (
+          <div className="flex" style={{ justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost btn-sm" style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }} onClick={handleDelete}>
+              Delete team
+            </button>
+          </div>
+        )
       )}
     </div>
   );

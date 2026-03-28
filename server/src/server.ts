@@ -34,6 +34,7 @@ interface Session {
   maxTeamSize: number | null; // null = unlimited
   qrCodeMode: 'off' | 'small' | 'big';
   buzzOrder: BuzzEntry[];
+  lastUpdated: string;
   buzzedTeams: Set<string>;
   buzzingOpenedAt: number | null; // ms epoch when buzzing was last enabled
 }
@@ -83,6 +84,7 @@ interface PersistedSession {
   maxTeamSize: number | null;
   qrCodeMode: 'off' | 'small' | 'big';
   buzzOrder: BuzzEntry[];
+  lastUpdated: string;
 }
 
 async function loadSessions(): Promise<void> {
@@ -103,6 +105,7 @@ async function loadSessions(): Promise<void> {
         maxTeamSize: p.maxTeamSize ?? null,
         qrCodeMode: p.qrCodeMode ?? 'small',
         buzzOrder: p.buzzOrder,
+        lastUpdated: p.lastUpdated ?? '',
         buzzedTeams: new Set(p.buzzOrder.map((e) => e.teamId)),
         buzzingOpenedAt: null,
       };
@@ -137,6 +140,7 @@ function scheduleSave(): void {
           maxTeamSize: s.maxTeamSize,
           qrCodeMode: s.qrCodeMode,
           buzzOrder: [...s.buzzOrder],
+          lastUpdated: s.lastUpdated,
         };
       }
       await writeFile(DATA_FILE, JSON.stringify(data, null, 2));
@@ -198,6 +202,7 @@ function peekPayload(session: Session) {
 }
 
 function broadcast(io: Server, session: Session) {
+  session.lastUpdated = new Date().toISOString();
   io.to(session.code).emit('session:state', toState(session, io));
   io.to(`${session.code}:peek`).emit('session:peek-update', peekPayload(session));
   scheduleSave();
@@ -249,6 +254,7 @@ io.on('connection', (socket: Socket) => {
       maxTeamSize: null,
       qrCodeMode: 'small',
       buzzOrder: [],
+      lastUpdated: new Date().toISOString(),
       buzzedTeams: new Set(),
       buzzingOpenedAt: null,
     };

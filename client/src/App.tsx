@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HostView } from './views/HostView';
 import { ScoreboardView } from './views/ScoreboardView';
 import { PlayerView } from './views/PlayerView';
@@ -9,6 +9,14 @@ function getView() {
 
 export default function App() {
   const [view, setView] = useState(getView);
+
+  useEffect(() => {
+    function onPopState() {
+      setView(getView());
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   function navigate(v: string) {
     const url = new URL(window.location.href);

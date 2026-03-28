@@ -49,22 +49,40 @@ No React Router. `?view=host|player|scoreboard` query param. `App.tsx` switches 
 | `host:rejoin` | Host reconnects with saved code+token |
 | `session:peek` | Player peeks at teams before joining |
 | `scoreboard:watch` | Scoreboard subscribes to a session |
-| `player:join` | Player joins a team (creates if new, enforces cap) |
+| `player:join` | Player joins/creates a team; 3rd arg is `isRejoin` boolean (true on socket reconnect) |
+| `player:rejoin` | Player reconnects by saved `teamId` (URL param); skips team-name step |
 | `team:create` | Host creates an empty team |
-| `team:delete` | Host deletes a team (emits `team:deleted` to members) |
+| `team:delete` | Host deletes a team |
 | `team:allow-creation` | Host toggles player team creation |
 | `team:set-max-size` | Host sets/clears max devices per team |
+| `session:joining` | Host enables/disables player joining entirely |
 | `session:qr-mode` | Host sets QR display mode (`off`/`small`/`big`) |
+| `session:state_request` | Any client requests a full state refresh |
 | `buzzer:enable` | Host opens/closes buzzing |
-| `buzzer:reset` | Host clears buzz order for the round |
+| `buzzer:reset` | Host clears buzz order and closes buzzing |
+| `buzzer:unbuzz` | Host removes a single team from the buzz order |
 | `player:buzz` | Player buzzes in |
 | `score:adjust` | Host adjusts a team's score by delta |
+
+### Socket events (server → client)
+| Event | Description |
+|---|---|
+| `session:state` | Full `SessionState` snapshot; broadcast to the session room on any change |
+| `session:peek-update` | Partial peek payload (teams, joiningEnabled, allowTeamCreation, maxTeamSize) sent to `<CODE>:peek` room |
+| `team:deleted` | Sent directly to members of a deleted team |
+| `buzzer:accepted` | Sent to the player whose buzz was accepted |
+| `buzzer:rejected` | Sent to a player who buzzed when buzzing was closed or their team already buzzed |
 
 ### Host session persistence
 `hostToken` (UUID) is stored in the URL: `?view=host&code=X&token=Y`. On refresh, `host:rejoin` validates the token and reassigns the host socket. No localStorage.
 
 ### Player join flow
 `enter-code` → `pick-team` → `in-game` (React state machine in `PlayerView.tsx`)
+
+After joining, `teamId` is added to the URL: `?view=player&code=X&teamId=Y`. On refresh, `player:rejoin` (by teamId) is used to skip the team-selection step. If the team no longer exists, the player falls back to `pick-team`.
+
+### SessionState fields
+`code`, `buzzingEnabled`, `joiningEnabled`, `allowTeamCreation`, `maxTeamSize`, `qrCodeMode`, `teams` (array of `TeamState`), `buzzOrder` (array of `BuzzEntry`), `scoreboardCount`, `waitingCount` (players currently in the `:peek` room).
 
 ## Key files
 
@@ -75,9 +93,9 @@ client/src/
   socket.ts                      # socket singleton (uses VITE_SERVER_URL or origin)
   types.ts                       # shared TS interfaces (TeamState, SessionState, BuzzEntry)
   views/
-    HostView.tsx
+    HostView.tsx                 # includes inline TeamRow component with two-step delete confirm
     PlayerView.tsx
-    ScoreboardView.tsx
+    ScoreboardView.tsx           # uses qrcode.react (QRCodeSVG) for QR codes
   index.css                      # dark gameshow theme
 ```
 
@@ -87,3 +105,5 @@ client/src/
 - `existsSync` guards static file serving so the dev server doesn't crash without a built client.
 - Windows `sed -i` with `\n` writes literal `\n`, not newlines — use the Write tool for multi-line edits.
 - Socket IDs change on reconnect; `socketMeta` maps current socket ID → session/team. Transient — not persisted.
+- `buzzer:reset` also sets `buzzingEnabled = false` (not just clears the order).
+- `joiningEnabled` is separate from `allowTeamCreation`: the former blocks all joins, the latter only blocks creating new teams.

@@ -215,7 +215,12 @@ export function HostView() {
                     <span className={`buzz-rank buzz-rank-${i + 1}`}>
                       {`#${i + 1}`}
                     </span>
-                    <span className="font-bold">{entry.teamName}</span>
+                    <span className="font-bold" style={{ flex: 1 }}>{entry.teamName}</span>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ padding: '2px 10px', fontSize: '0.8rem' }}
+                      onClick={() => socket.emit('buzzer:unbuzz', session.code, entry.teamId)}
+                    >✕</button>
                   </div>
                 ))}
               </div>

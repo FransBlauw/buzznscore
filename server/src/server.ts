@@ -463,6 +463,15 @@ io.on('connection', (socket: Socket) => {
     broadcast(io, session);
   });
 
+  // ── Host: unbuzz a team ───────────────────────────────────────────────────
+  socket.on('buzzer:unbuzz', (code: string, teamId: string) => {
+    const session = sessions.get(code);
+    if (!session || session.hostSocketId !== socket.id) return;
+    session.buzzOrder = session.buzzOrder.filter((e) => e.teamId !== teamId);
+    session.buzzedTeams.delete(teamId);
+    broadcast(io, session);
+  });
+
   // ── Host: reset buzzing ───────────────────────────────────────────────────
   socket.on('buzzer:reset', (code: string) => {
     const session = sessions.get(code);

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { HostView } from './views/HostView';
 import { ScoreboardView } from './views/ScoreboardView';
 import { PlayerView } from './views/PlayerView';
+import { LandingView } from './views/LandingView';
 
 function getView() {
   return new URLSearchParams(window.location.search).get('view') ?? 'landing';
@@ -29,21 +30,5 @@ export default function App() {
   if (view === 'scoreboard') return <ScoreboardView />;
   if (view === 'player') return <PlayerView />;
 
-  return (
-    <div className="container" style={{ paddingTop: 80 }}>
-      <h1 className="title">BuzzNScore</h1>
-      <p className="subtitle">Live gameshow buzzer &amp; score manager</p>
-      <div className="landing-buttons">
-        <button className="btn btn-gold btn-large" onClick={() => navigate('host')}>
-          Host a Game
-        </button>
-        <button className="btn btn-secondary btn-large" onClick={() => navigate('player')}>
-          Join as Player
-        </button>
-        <button className="btn btn-secondary btn-large" onClick={() => navigate('scoreboard')}>
-          View Scoreboard
-        </button>
-      </div>
-    </div>
-  );
+  return <LandingView navigate={navigate} />;
 }

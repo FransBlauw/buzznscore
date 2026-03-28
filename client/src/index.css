@@ -296,10 +296,31 @@ body {
 /* ── Divider ───────────────────────────────────────────────────────────────── */
 .divider { height: 1px; background: var(--card-border); margin: 20px 0; }
 
+/* ── Host layout grid ──────────────────────────────────────────────────────── */
+.host-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
 /* ── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .buzz-button { width: 170px; height: 170px; font-size: 1.5rem; }
   .team-score  { font-size: 1.4rem; }
   .score-value { font-size: 1.8rem; }
   .btn-sm      { padding: 5px 10px; }
+
+  .host-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .host-topbar-actions {
+    width: 100%;
+    margin-left: 0 !important;
+    justify-content: stretch;
+  }
+
+  .host-topbar-actions .btn {
+    flex: 1;
+  }
 }

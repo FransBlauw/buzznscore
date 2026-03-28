@@ -142,7 +142,7 @@ export function HostView() {
             {session.code}
           </div>
         </div>
-        <div className="flex gap-8 ml-auto flex-wrap">
+        <div className="flex gap-8 ml-auto flex-wrap host-topbar-actions">
           {session.buzzingEnabled ? (
             <button className="btn btn-ghost" onClick={disableBuzzing}>Disable Buzzing</button>
           ) : (
@@ -152,7 +152,7 @@ export function HostView() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr)', gap: 24 }}>
+      <div className="host-grid">
         {/* ── Left column ─────────────────────────────────────────────── */}
         <div className="flex flex-col gap-16">
 

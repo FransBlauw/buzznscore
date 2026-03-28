@@ -181,10 +181,10 @@ export function ScoreboardView() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <div>
             <div className="text-dim text-sm" style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              BuzzNScore
+              BuzzNScore.app
             </div>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'rgba(255,215,0,0.7)' }}>
-              Code: {session.code}
+              Code: <span style={{ fontWeight: 700, letterSpacing: '0.15em', color: 'var(--gold)', fontSize: '1.1rem' }}>{session.code}</span>
             </div>
           </div>
           {session.qrCodeMode === 'small' && (
@@ -192,9 +192,6 @@ export function ScoreboardView() {
               <QRCodeSVG value={playerUrl} size={72} bgColor="transparent" fgColor="#ffd700" style={{ borderRadius: 6 }} />
               <div>
                 <div className="text-dim text-sm">Scan to join</div>
-                <div style={{ fontWeight: 700, letterSpacing: '0.12em', color: 'var(--gold)', fontSize: '1.1rem' }}>
-                  {session.code}
-                </div>
               </div>
             </div>
           )}

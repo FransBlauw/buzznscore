@@ -147,12 +147,12 @@ export function HostView() {
           </div>
         </div>
         <div className="flex gap-8 ml-auto flex-wrap host-topbar-actions">
+          <button className="btn btn-secondary" onClick={resetBuzzing}>Reset Round</button>
           {session.buzzingEnabled ? (
             <button className="btn btn-ghost" onClick={disableBuzzing}>Disable Buzzing</button>
           ) : (
             <button className="btn btn-green" onClick={enableBuzzing}>Enable Buzzing</button>
           )}
-          <button className="btn btn-secondary" onClick={resetBuzzing}>Reset Round</button>
         </div>
       </div>
 

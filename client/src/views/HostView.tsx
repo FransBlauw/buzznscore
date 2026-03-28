@@ -3,6 +3,39 @@ import { QRCodeSVG } from 'qrcode.react';
 import { socket } from '../socket';
 import { SessionState, TeamState } from '../types';
 
+// ── localStorage helpers ────────────────────────────────────────────────────
+
+const STORAGE_KEY = 'buzznscore:host-sessions';
+type SavedSession = { code: string; token: string; savedAt: number };
+
+function loadSavedSessions(): SavedSession[] {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'); }
+  catch { return []; }
+}
+
+function persistSession(code: string, token: string) {
+  const sessions = loadSavedSessions().filter(s => s.code !== code);
+  sessions.unshift({ code, token, savedAt: Date.now() });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions.slice(0, 10)));
+}
+
+function dropSession(code: string) {
+  const sessions = loadSavedSessions().filter(s => s.code !== code);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+}
+
+function relativeTime(ts: number): string {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+// ── Component ───────────────────────────────────────────────────────────────
+
 export function HostView() {
   const [session, setSession] = useState<SessionState | null>(null);
   const [copied, setCopied] = useState('');
@@ -10,6 +43,7 @@ export function HostView() {
   const [teamError, setTeamError] = useState('');
   const [editTeams, setEditTeams] = useState(false);
   const [rejoining, setRejoining] = useState(false);
+  const [savedSessions, setSavedSessions] = useState<SavedSession[]>(loadSavedSessions);
 
   const [connected, setConnected] = useState(socket.connected);
   const hasConnectedRef = useRef(false);
@@ -17,18 +51,18 @@ export function HostView() {
   useEffect(() => {
     socket.on('session:state', setSession);
 
-    const rejoin = (isFirstConnect: boolean) => {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
-      const token = params.get('token');
-      if (!code || !token) return;
+    const rejoin = (code: string, token: string, isFirstConnect: boolean) => {
       if (isFirstConnect) setRejoining(true);
       socket.emit('host:rejoin', code, token, (state: SessionState | null) => {
         setRejoining(false);
         if (state) {
+          persistSession(code, token);
+          setSavedSessions(loadSavedSessions());
           setSession(state);
         } else if (isFirstConnect) {
-          // Session expired or token invalid — drop back to create screen
+          // Session expired or token invalid — drop from storage and URL
+          dropSession(code);
+          setSavedSessions(loadSavedSessions());
           window.history.replaceState({}, '', '?view=host');
         }
       });
@@ -38,7 +72,10 @@ export function HostView() {
       const isFirst = !hasConnectedRef.current;
       hasConnectedRef.current = true;
       setConnected(true);
-      rejoin(isFirst);
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const token = params.get('token');
+      if (code && token) rejoin(code, token, isFirst);
     };
 
     socket.on('connect', onConnect);
@@ -55,8 +92,28 @@ export function HostView() {
   const createSession = () => {
     socket.emit('session:create', (result: { state: SessionState; hostToken: string }) => {
       const { code } = result.state;
-      window.history.replaceState({}, '', `?view=host&code=${code}&token=${result.hostToken}`);
+      const token = result.hostToken;
+      window.history.replaceState({}, '', `?view=host&code=${code}&token=${token}`);
+      persistSession(code, token);
+      setSavedSessions(loadSavedSessions());
       setSession(result.state);
+    });
+  };
+
+  const continueSession = (saved: SavedSession) => {
+    window.history.replaceState({}, '', `?view=host&code=${saved.code}&token=${saved.token}`);
+    setRejoining(true);
+    socket.emit('host:rejoin', saved.code, saved.token, (state: SessionState | null) => {
+      setRejoining(false);
+      if (state) {
+        persistSession(saved.code, saved.token);
+        setSavedSessions(loadSavedSessions());
+        setSession(state);
+      } else {
+        dropSession(saved.code);
+        setSavedSessions(loadSavedSessions());
+        window.history.replaceState({}, '', '?view=host');
+      }
     });
   };
 
@@ -73,9 +130,32 @@ export function HostView() {
       <div className="container" style={{ paddingTop: 80 }}>
         <h1 className="title">BuzzNScore</h1>
         <p className="subtitle">Host a new game session</p>
-        <div className="text-center mt-32">
+        {savedSessions.length > 0 && (
+          <div style={{ maxWidth: 420, margin: '32px auto 0' }}>
+            <div className="text-dim text-sm" style={{ marginBottom: 10 }}>Previous sessions</div>
+            <div className="flex flex-col gap-8" style={{ marginBottom: 24 }}>
+              {savedSessions.map(s => (
+                <div key={s.code} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="session-code" style={{ fontSize: '1.4rem', lineHeight: 1.2 }}>{s.code}</div>
+                    <div className="text-dim text-sm">{relativeTime(s.savedAt)}</div>
+                  </div>
+                  <button className="btn btn-secondary btn-sm" onClick={() => continueSession(s)}>Continue</button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    title="Remove"
+                    style={{ color: 'var(--text-dim)', padding: '4px 8px' }}
+                    onClick={() => { dropSession(s.code); setSavedSessions(loadSavedSessions()); }}
+                  >✕</button>
+                </div>
+              ))}
+            </div>
+            <div className="divider" style={{ marginBottom: 24 }} />
+          </div>
+        )}
+        <div className="text-center" style={{ marginTop: savedSessions.length === 0 ? 32 : 0 }}>
           <button className="btn btn-gold btn-large" onClick={createSession}>
-            Create Session
+            Create New Session
           </button>
         </div>
       </div>

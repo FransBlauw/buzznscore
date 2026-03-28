@@ -293,6 +293,7 @@ body {
   border-radius: var(--radius-lg);
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.1);
+  will-change: transform;
 }
 .top-card.rank-1 {
   border-color: rgba(255,215,0,0.5);
@@ -335,6 +336,7 @@ body {
   border-radius: var(--radius-lg);
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.07);
+  will-change: transform;
 }
 .rest-card-rank  { font-size: 0.8rem; font-weight: 800; color: var(--text-dim); }
 .rest-card-name  { font-size: clamp(0.95rem, 2vw, 1.1rem); font-weight: 700; }

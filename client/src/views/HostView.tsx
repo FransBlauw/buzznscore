@@ -80,8 +80,8 @@ export function HostView() {
     );
   }
 
-  const playerUrl = `${window.location.origin}?view=player&code=${session.code}`;
-  const scoreboardUrl = `${window.location.origin}?view=scoreboard&code=${session.code}`;
+  const playerUrl = `${window.location.origin}/?view=player&code=${session.code}`;
+  const scoreboardUrl = `${window.location.origin}/?view=scoreboard&code=${session.code}`;
 
   const copyLink = (url: string, key: string) => {
     const finish = () => { setCopied(key); setTimeout(() => setCopied(''), 2000); };

@@ -1,10 +1,22 @@
+import { useState } from 'react';
 import { HostView } from './views/HostView';
 import { ScoreboardView } from './views/ScoreboardView';
 import { PlayerView } from './views/PlayerView';
 
-const view = new URLSearchParams(window.location.search).get('view') ?? 'landing';
+function getView() {
+  return new URLSearchParams(window.location.search).get('view') ?? 'landing';
+}
 
 export default function App() {
+  const [view, setView] = useState(getView);
+
+  function navigate(v: string) {
+    const url = new URL(window.location.href);
+    url.search = `?view=${v}`;
+    window.history.pushState({}, '', url);
+    setView(v);
+  }
+
   if (view === 'host') return <HostView />;
   if (view === 'scoreboard') return <ScoreboardView />;
   if (view === 'player') return <PlayerView />;
@@ -14,15 +26,15 @@ export default function App() {
       <h1 className="title">BuzzNScore</h1>
       <p className="subtitle">Live gameshow buzzer &amp; score manager</p>
       <div className="landing-buttons">
-        <a href="?view=host" className="btn btn-gold btn-large">
+        <button className="btn btn-gold btn-large" onClick={() => navigate('host')}>
           Host a Game
-        </a>
-        <a href="?view=player" className="btn btn-secondary btn-large">
+        </button>
+        <button className="btn btn-secondary btn-large" onClick={() => navigate('player')}>
           Join as Player
-        </a>
-        <a href="?view=scoreboard" className="btn btn-secondary btn-large">
+        </button>
+        <button className="btn btn-secondary btn-large" onClick={() => navigate('scoreboard')}>
           View Scoreboard
-        </a>
+        </button>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { socket } from '../socket';
 import { SessionState, TeamState } from '../types';
 
@@ -353,6 +354,7 @@ export function HostView() {
                 copyKey="host"
                 copied={copied}
                 onCopy={() => copyLink(hostUrl, 'host')}
+                showQrButton
               />
             </div>
           </div>
@@ -371,6 +373,7 @@ function LinkRow({
   copied,
   onCopy,
   badge,
+  showQrButton,
 }: {
   label: string;
   url: string;
@@ -378,12 +381,28 @@ function LinkRow({
   copied: string;
   onCopy: () => void;
   badge?: string;
+  showQrButton?: boolean;
 }) {
+  const [qrOpen, setQrOpen] = useState(false);
+
   return (
     <div>
       <div className="flex items-center gap-8" style={{ marginBottom: 4 }}>
         <div className="text-dim text-sm" style={{ flex: 1 }}>{label}</div>
         {badge && <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>{badge}</span>}
+        {showQrButton && (
+          <button
+            className="btn btn-ghost btn-icon btn-sm"
+            title="Show QR code"
+            onClick={() => setQrOpen(v => !v)}
+            style={{ color: qrOpen ? 'var(--text)' : undefined }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="3" height="3" /><rect x="18" y="14" width="3" height="3" /><rect x="14" y="18" width="3" height="3" /><rect x="18" y="18" width="3" height="3" />
+            </svg>
+          </button>
+        )}
         <button className="btn btn-ghost btn-icon btn-sm" title="Copy link" onClick={onCopy}>
           {copied === copyKey ? (
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -405,6 +424,13 @@ function LinkRow({
         </a>
       </div>
       <div className="text-dim" style={{ fontSize: '0.78rem', wordBreak: 'break-all' }}>{url}</div>
+      {qrOpen && (
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 8, padding: 10, display: 'inline-flex' }}>
+            <QRCodeSVG value={url} size={160} bgColor="#ffffff" fgColor="#000000" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -23,7 +23,7 @@ interface BuzzEntry {
 
 interface Session {
   code: string;
-  hostSocketId: string;
+  hostSockets: Set<string>;
   hostToken: string;
   teams: Map<string, Team>;
   teamsByName: Map<string, string>; // lowercase name → teamId
@@ -90,7 +90,7 @@ async function loadSessions(): Promise<void> {
     for (const p of Object.values(data)) {
       const session: Session = {
         code: p.code,
-        hostSocketId: '',
+        hostSockets: new Set(),
         hostToken: p.hostToken,
         teams: new Map(),
         teamsByName: new Map(),
@@ -234,7 +234,7 @@ io.on('connection', (socket: Socket) => {
     const hostToken = randomUUID();
     const session: Session = {
       code,
-      hostSocketId: socket.id,
+      hostSockets: new Set([socket.id]),
       hostToken,
       teams: new Map(),
       teamsByName: new Map(),
@@ -260,12 +260,11 @@ io.on('connection', (socket: Socket) => {
     (code: string, hostToken: string, callback: (state: SessionState | null) => void) => {
       const session = sessions.get(code.toUpperCase().trim());
       if (!session || session.hostToken !== hostToken) { callback(null); return; }
-      if (session.hostSocketId !== socket.id) socketMeta.delete(session.hostSocketId);
-      session.hostSocketId = socket.id;
+      session.hostSockets.add(socket.id);
       socketMeta.set(socket.id, { sessionCode: session.code, role: 'host' });
       socket.join(session.code);
       callback(toState(session, io));
-      console.log(`Host rejoined session: ${code}`);
+      console.log(`Host joined session: ${code} (${session.hostSockets.size} host socket(s))`);
     }
   );
 
@@ -379,7 +378,7 @@ io.on('connection', (socket: Socket) => {
     'team:create',
     (code: string, teamName: string, callback: (error?: string) => void) => {
       const session = sessions.get(code);
-      if (!session || session.hostSocketId !== socket.id) return;
+      if (!session || !session.hostSockets.has(socket.id)) return;
       const name = teamName.trim();
       if (!name) { callback('Name is required'); return; }
       if (session.teamsByName.has(name.toLowerCase())) { callback('A team with that name already exists'); return; }
@@ -394,7 +393,7 @@ io.on('connection', (socket: Socket) => {
   // ── Host: delete a team ───────────────────────────────────────────────────
   socket.on('team:delete', (code: string, teamId: string) => {
     const session = sessions.get(code);
-    if (!session || session.hostSocketId !== socket.id) return;
+    if (!session || !session.hostSockets.has(socket.id)) return;
     const team = session.teams.get(teamId);
     if (!team) return;
     for (const memberId of team.members) {
@@ -411,7 +410,7 @@ io.on('connection', (socket: Socket) => {
   // ── Host: enable/disable player joining ──────────────────────────────────
   socket.on('session:joining', (code: string, enabled: boolean) => {
     const session = sessions.get(code);
-    if (!session || session.hostSocketId !== socket.id) return;
+    if (!session || !session.hostSockets.has(socket.id)) return;
     session.joiningEnabled = enabled;
     broadcast(io, session);
   });
@@ -419,7 +418,7 @@ io.on('connection', (socket: Socket) => {
   // ── Host: toggle player team creation ────────────────────────────────────
   socket.on('team:allow-creation', (code: string, allowed: boolean) => {
     const session = sessions.get(code);
-    if (!session || session.hostSocketId !== socket.id) return;
+    if (!session || !session.hostSockets.has(socket.id)) return;
     session.allowTeamCreation = allowed;
     broadcast(io, session);
   });
@@ -427,7 +426,7 @@ io.on('connection', (socket: Socket) => {
   // ── Host: set max team size ───────────────────────────────────────────────
   socket.on('team:set-max-size', (code: string, max: number | null) => {
     const session = sessions.get(code);
-    if (!session || session.hostSocketId !== socket.id) return;
+    if (!session || !session.hostSockets.has(socket.id)) return;
     session.maxTeamSize = max;
     broadcast(io, session);
   });
@@ -435,7 +434,7 @@ io.on('connection', (socket: Socket) => {
   // ── Host: toggle QR code visibility on scoreboard ────────────────────────
   socket.on('session:qr-mode', (code: string, mode: 'off' | 'small' | 'big') => {
     const session = sessions.get(code);
-    if (!session || session.hostSocketId !== socket.id) return;
+    if (!session || !session.hostSockets.has(socket.id)) return;
     session.qrCodeMode = mode;
     broadcast(io, session);
   });
@@ -443,7 +442,7 @@ io.on('connection', (socket: Socket) => {
   // ── Host: enable/disable buzzing ──────────────────────────────────────────
   socket.on('buzzer:enable', (code: string, enabled: boolean) => {
     const session = sessions.get(code);
-    if (!session || session.hostSocketId !== socket.id) return;
+    if (!session || !session.hostSockets.has(socket.id)) return;
     session.buzzingEnabled = enabled;
     broadcast(io, session);
   });
@@ -466,7 +465,7 @@ io.on('connection', (socket: Socket) => {
   // ── Host: unbuzz a team ───────────────────────────────────────────────────
   socket.on('buzzer:unbuzz', (code: string, teamId: string) => {
     const session = sessions.get(code);
-    if (!session || session.hostSocketId !== socket.id) return;
+    if (!session || !session.hostSockets.has(socket.id)) return;
     session.buzzOrder = session.buzzOrder.filter((e) => e.teamId !== teamId);
     session.buzzedTeams.delete(teamId);
     broadcast(io, session);
@@ -475,7 +474,7 @@ io.on('connection', (socket: Socket) => {
   // ── Host: reset buzzing ───────────────────────────────────────────────────
   socket.on('buzzer:reset', (code: string) => {
     const session = sessions.get(code);
-    if (!session || session.hostSocketId !== socket.id) return;
+    if (!session || !session.hostSockets.has(socket.id)) return;
     session.buzzOrder = [];
     session.buzzedTeams.clear();
     session.buzzingEnabled = false;
@@ -485,7 +484,7 @@ io.on('connection', (socket: Socket) => {
   // ── Host: adjust score ────────────────────────────────────────────────────
   socket.on('score:adjust', (code: string, teamId: string, delta: number) => {
     const session = sessions.get(code);
-    if (!session || session.hostSocketId !== socket.id) return;
+    if (!session || !session.hostSockets.has(socket.id)) return;
     const team = session.teams.get(teamId);
     if (!team) return;
     team.score += delta;
@@ -505,7 +504,9 @@ io.on('connection', (socket: Socket) => {
     socketMeta.delete(socket.id);
     const session = sessions.get(meta.sessionCode);
     if (!session) return;
-    if (meta.role === 'player' && meta.teamId) {
+    if (meta.role === 'host') {
+      session.hostSockets.delete(socket.id);
+    } else if (meta.role === 'player' && meta.teamId) {
       const team = session.teams.get(meta.teamId);
       if (team) {
         team.members.delete(socket.id);

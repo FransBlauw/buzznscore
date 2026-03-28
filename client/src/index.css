@@ -311,6 +311,8 @@ body {
   .score-value { font-size: 1.8rem; }
   .btn-sm      { padding: 5px 10px; }
 
+  .score-buttons .btn-sm { padding: 10px 18px; font-size: 0.9rem; }
+
   .host-grid {
     grid-template-columns: 1fr;
   }
@@ -333,5 +335,6 @@ body {
   .score-buttons {
     margin-left: 0;
     justify-content: center;
+    gap: 10px;
   }
 }

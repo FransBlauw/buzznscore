@@ -181,7 +181,7 @@ export function HostView() {
             ) : (
               <div className="flex flex-col gap-8" style={{ marginBottom: 16 }}>
                 {[...session.teams]
-                  .sort((a, b) => b.score - a.score)
+                  .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
                   .map((team) => (
                     <TeamRow
                       key={team.id}
@@ -189,6 +189,7 @@ export function HostView() {
                       buzzedPosition={session.buzzOrder.findIndex((e) => e.teamId === team.id)}
                       onAdjust={(d) => adjustScore(team.id, d)}
                       onDelete={() => socket.emit('team:delete', session.code, team.id)}
+                      onRename={(name, cb) => socket.emit('team:rename', session.code, team.id, name, cb)}
                       editMode={editTeams}
                     />
                   ))}
@@ -452,19 +453,43 @@ function TeamRow({
   buzzedPosition,
   onAdjust,
   onDelete,
+  onRename,
   editMode,
 }: {
   team: TeamState;
   buzzedPosition: number;
   onAdjust: (delta: number) => void;
   onDelete: () => void;
+  onRename: (name: string, cb: (error?: string) => void) => void;
   editMode: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState('');
 
   useEffect(() => {
-    if (!editMode) setConfirming(false);
+    if (!editMode) {
+      setConfirming(false);
+      setRenaming(false);
+      setRenameError('');
+    }
   }, [editMode]);
+
+  const startRename = () => {
+    setRenameValue(team.name);
+    setRenameError('');
+    setRenaming(true);
+  };
+
+  const submitRename = () => {
+    const name = renameValue.trim();
+    if (!name || name === team.name) { setRenaming(false); return; }
+    onRename(name, (error) => {
+      if (error) { setRenameError(error); return; }
+      setRenaming(false);
+    });
+  };
 
   const handleDelete = () => {
     if (confirming) {
@@ -478,17 +503,36 @@ function TeamRow({
     <div className="team-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
       <div className="flex items-center gap-8 team-row-inner">
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div className="team-name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {team.name}
-            {buzzedPosition >= 0 && (
-              <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
-                #{buzzedPosition + 1}
-              </span>
-            )}
-          </div>
-          <div className="text-dim text-sm">
-            {team.memberCount} device{team.memberCount !== 1 ? 's' : ''}
-          </div>
+          {renaming ? (
+            <div className="flex gap-8 items-center" style={{ flexWrap: 'wrap' }}>
+              <input
+                className="input"
+                style={{ flex: 1, minWidth: 100, padding: '4px 10px', fontSize: '1rem' }}
+                value={renameValue}
+                autoFocus
+                maxLength={30}
+                onChange={(e) => { setRenameValue(e.target.value); setRenameError(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenaming(false); }}
+              />
+              <button className="btn btn-secondary btn-sm" onClick={submitRename} disabled={!renameValue.trim()}>Save</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setRenaming(false)}>Cancel</button>
+              {renameError && <span style={{ color: '#ff6b6b', fontSize: '0.8rem', width: '100%' }}>{renameError}</span>}
+            </div>
+          ) : (
+            <>
+              <div className="team-name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {team.name}
+                {buzzedPosition >= 0 && (
+                  <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
+                    #{buzzedPosition + 1}
+                  </span>
+                )}
+              </div>
+              <div className="text-dim text-sm">
+                {team.memberCount} device{team.memberCount !== 1 ? 's' : ''}
+              </div>
+            </>
+          )}
         </div>
         <div className="score-buttons">
           {([-5, -1] as const).map((d) => (
@@ -505,8 +549,8 @@ function TeamRow({
         </div>
       </div>
 
-      {/* Delete / confirm row — only visible in edit mode */}
-      {editMode && (
+      {/* Edit-mode action row — only visible in edit mode */}
+      {editMode && !renaming && (
         confirming ? (
           <div className="flex gap-8 items-center" style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
             <span className="text-sm" style={{ color: '#ff6b6b', flex: 1 }}>
@@ -516,9 +560,12 @@ function TeamRow({
             <button className="btn btn-ghost btn-sm" onClick={() => setConfirming(false)}>Cancel</button>
           </div>
         ) : (
-          <div className="flex" style={{ justifyContent: 'flex-end' }}>
+          <div className="flex gap-8" style={{ justifyContent: 'flex-end', paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+            <button className="btn btn-ghost btn-sm" style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }} onClick={startRename}>
+              Rename
+            </button>
             <button className="btn btn-ghost btn-sm" style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }} onClick={handleDelete}>
-              Delete team
+              Delete
             </button>
           </div>
         )

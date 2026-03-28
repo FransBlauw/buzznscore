@@ -53,6 +53,7 @@ No React Router. `?view=host|player|scoreboard` query param. `App.tsx` switches 
 | `player:rejoin` | Player reconnects by saved `teamId` (URL param); skips team-name step |
 | `team:create` | Host creates an empty team |
 | `team:delete` | Host deletes a team |
+| `team:rename` | Host renames a team; also updates any buzz order entries with the new name |
 | `team:allow-creation` | Host toggles player team creation |
 | `team:set-max-size` | Host sets/clears max devices per team |
 | `session:joining` | Host enables/disables player joining entirely |
@@ -93,7 +94,7 @@ client/src/
   socket.ts                      # socket singleton (uses VITE_SERVER_URL or origin)
   types.ts                       # shared TS interfaces (TeamState, SessionState, BuzzEntry)
   views/
-    HostView.tsx                 # includes inline TeamRow component with two-step delete confirm
+    HostView.tsx                 # includes inline TeamRow component; edit mode (toggle in card header) reveals per-row Rename and Delete actions
     PlayerView.tsx
     ScoreboardView.tsx           # uses qrcode.react (QRCodeSVG) for QR codes
   index.css                      # dark gameshow theme
@@ -107,3 +108,5 @@ client/src/
 - Socket IDs change on reconnect; `socketMeta` maps current socket ID → session/team. Transient — not persisted.
 - `buzzer:reset` also sets `buzzingEnabled = false` (not just clears the order).
 - `joiningEnabled` is separate from `allowTeamCreation`: the former blocks all joins, the latter only blocks creating new teams.
+- **Edit mode** (Teams & Scores card): toggled by an Edit/Done button in the card header. While active, each `TeamRow` shows a bottom action bar with **Rename** (inline input, Enter/Escape, error display) and **Delete** (two-step confirm). Exiting edit mode cancels any open rename or confirmation. Delete buttons and rename UI are hidden during normal gameplay.
+- `team:rename` validates uniqueness (case-insensitive, allows same-cased rename), updates `teamsByName` index, and patches `teamName` in any in-flight `buzzOrder` entries.

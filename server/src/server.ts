@@ -407,6 +407,31 @@ io.on('connection', (socket: Socket) => {
     broadcast(io, session);
   });
 
+  // ── Host: rename a team ───────────────────────────────────────────────────
+  socket.on(
+    'team:rename',
+    (code: string, teamId: string, newName: string, callback: (error?: string) => void) => {
+      const session = sessions.get(code);
+      if (!session || !session.hostSockets.has(socket.id)) return;
+      const team = session.teams.get(teamId);
+      if (!team) { callback('Team not found'); return; }
+      const name = newName.trim();
+      if (!name) { callback('Name is required'); return; }
+      if (name.toLowerCase() !== team.name.toLowerCase() && session.teamsByName.has(name.toLowerCase())) {
+        callback('A team with that name already exists'); return;
+      }
+      session.teamsByName.delete(team.name.toLowerCase());
+      team.name = name;
+      session.teamsByName.set(name.toLowerCase(), teamId);
+      // Update any buzz order entries that carry the team name
+      for (const entry of session.buzzOrder) {
+        if (entry.teamId === teamId) entry.teamName = name;
+      }
+      callback();
+      broadcast(io, session);
+    }
+  );
+
   // ── Host: enable/disable player joining ──────────────────────────────────
   socket.on('session:joining', (code: string, enabled: boolean) => {
     const session = sessions.get(code);

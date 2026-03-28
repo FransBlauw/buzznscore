@@ -231,7 +231,14 @@ export function HostView() {
             <div className="section-title">Links</div>
             <div className="flex flex-col gap-12">
               <div>
-                <div className="text-dim text-sm" style={{ marginBottom: 4 }}>Player join</div>
+                <div className="flex items-center gap-8" style={{ marginBottom: 4 }}>
+                  <div className="text-dim text-sm">Player join</div>
+                  {session.waitingCount > 0 && (
+                    <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
+                      {session.waitingCount} waiting
+                    </span>
+                  )}
+                </div>
                 <div className="text-dim" style={{ fontSize: '0.8rem', wordBreak: 'break-all', marginBottom: 6 }}>{playerUrl}</div>
                 <button className="btn btn-secondary btn-sm w-full" onClick={() => copyLink(playerUrl, 'player')}>
                   {copied === 'player' ? '✓ Copied!' : 'Copy Player Link'}
@@ -239,7 +246,14 @@ export function HostView() {
               </div>
               <div className="divider" style={{ margin: 0 }} />
               <div>
-                <div className="text-dim text-sm" style={{ marginBottom: 4 }}>Scoreboard</div>
+                <div className="flex items-center gap-8" style={{ marginBottom: 4 }}>
+                  <div className="text-dim text-sm">Scoreboard</div>
+                  {session.scoreboardCount > 0 && (
+                    <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
+                      {session.scoreboardCount} watching
+                    </span>
+                  )}
+                </div>
                 <div className="text-dim" style={{ fontSize: '0.8rem', wordBreak: 'break-all', marginBottom: 6 }}>{scoreboardUrl}</div>
                 <button className="btn btn-secondary btn-sm w-full" onClick={() => copyLink(scoreboardUrl, 'scoreboard')}>
                   {copied === 'scoreboard' ? '✓ Copied!' : 'Copy Scoreboard Link'}

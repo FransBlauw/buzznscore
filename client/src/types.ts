@@ -19,4 +19,6 @@ export interface SessionState {
   qrCodeMode: 'off' | 'small' | 'big';
   teams: TeamState[];
   buzzOrder: BuzzEntry[];
+  scoreboardCount: number;
+  waitingCount: number;
 }

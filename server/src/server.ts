@@ -53,6 +53,8 @@ interface SessionState {
   qrCodeMode: 'off' | 'small' | 'big';
   teams: TeamState[];
   buzzOrder: BuzzEntry[];
+  scoreboardCount: number;
+  waitingCount: number;
 }
 
 // ─── In-memory store ──────────────────────────────────────────────────────────
@@ -60,7 +62,7 @@ interface SessionState {
 const sessions = new Map<string, Session>();
 const socketMeta = new Map<
   string,
-  { sessionCode: string; role: 'host' | 'scoreboard' | 'player'; teamId?: string }
+  { sessionCode: string; role: 'host' | 'scoreboard' | 'player' | 'peek'; teamId?: string }
 >();
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
@@ -153,7 +155,13 @@ function generateCode(): string {
   return code;
 }
 
-function toState(session: Session): SessionState {
+function toState(session: Session, io?: Server): SessionState {
+  const scoreboardCount = Array.from(socketMeta.values()).filter(
+    (m) => m.sessionCode === session.code && m.role === 'scoreboard'
+  ).length;
+  const waitingCount = io
+    ? (io.sockets.adapter.rooms.get(`${session.code}:peek`)?.size ?? 0)
+    : 0;
   return {
     code: session.code,
     buzzingEnabled: session.buzzingEnabled,
@@ -168,6 +176,8 @@ function toState(session: Session): SessionState {
       memberCount: t.members.size,
     })),
     buzzOrder: [...session.buzzOrder],
+    scoreboardCount,
+    waitingCount,
   };
 }
 
@@ -183,7 +193,7 @@ function peekPayload(session: Session) {
 }
 
 function broadcast(io: Server, session: Session) {
-  io.to(session.code).emit('session:state', toState(session));
+  io.to(session.code).emit('session:state', toState(session, io));
   io.to(`${session.code}:peek`).emit('session:peek-update', peekPayload(session));
   scheduleSave();
 }
@@ -239,7 +249,7 @@ io.on('connection', (socket: Socket) => {
     sessions.set(code, session);
     socketMeta.set(socket.id, { sessionCode: code, role: 'host' });
     socket.join(code);
-    callback({ state: toState(session), hostToken });
+    callback({ state: toState(session, io), hostToken });
     scheduleSave();
     console.log(`Session created: ${code}`);
   });
@@ -254,7 +264,7 @@ io.on('connection', (socket: Socket) => {
       session.hostSocketId = socket.id;
       socketMeta.set(socket.id, { sessionCode: session.code, role: 'host' });
       socket.join(session.code);
-      callback(toState(session));
+      callback(toState(session, io));
       console.log(`Host rejoined session: ${code}`);
     }
   );
@@ -265,8 +275,10 @@ io.on('connection', (socket: Socket) => {
     (code: string, callback: (result: { teams: TeamState[]; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => void) => {
       const session = sessions.get(code.toUpperCase().trim());
       if (!session) { callback(null); return; }
+      socketMeta.set(socket.id, { sessionCode: session.code, role: 'peek' });
       socket.join(`${session.code}:peek`);
       callback(peekPayload(session));
+      broadcast(io, session);
     }
   );
 
@@ -278,7 +290,8 @@ io.on('connection', (socket: Socket) => {
       if (!session) { callback(null); return; }
       socketMeta.set(socket.id, { sessionCode: session.code, role: 'scoreboard' });
       socket.join(session.code);
-      callback(toState(session));
+      callback(toState(session, io));
+      broadcast(io, session);
     }
   );
 
@@ -335,7 +348,7 @@ io.on('connection', (socket: Socket) => {
       socketMeta.set(socket.id, { sessionCode: session.code, role: 'player', teamId });
       socket.leave(`${session.code}:peek`);
       socket.join(session.code);
-      callback({ success: true, teamId, state: toState(session) });
+      callback({ success: true, teamId, state: toState(session, io) });
       broadcast(io, session);
     }
   );
@@ -356,7 +369,7 @@ io.on('connection', (socket: Socket) => {
       socketMeta.set(socket.id, { sessionCode: session.code, role: 'player', teamId });
       socket.leave(`${session.code}:peek`);
       socket.join(session.code);
-      callback({ success: true, teamId, teamName: team.name, state: toState(session) });
+      callback({ success: true, teamId, teamName: team.name, state: toState(session, io) });
       broadcast(io, session);
     }
   );
@@ -473,7 +486,7 @@ io.on('connection', (socket: Socket) => {
   // ── Any client: request full state refresh ────────────────────────────────
   socket.on('session:state_request', (code: string) => {
     const session = sessions.get(code);
-    if (session) socket.emit('session:state', toState(session));
+    if (session) socket.emit('session:state', toState(session, io));
   });
 
   // ── Disconnect cleanup ────────────────────────────────────────────────────
@@ -489,6 +502,8 @@ io.on('connection', (socket: Socket) => {
         team.members.delete(socket.id);
         broadcast(io, session);
       }
+    } else if (meta.role === 'scoreboard' || meta.role === 'peek') {
+      broadcast(io, session);
     }
   });
 });

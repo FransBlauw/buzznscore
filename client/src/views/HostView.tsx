@@ -80,6 +80,8 @@ export function HostView() {
     );
   }
 
+  const hostToken = new URLSearchParams(window.location.search).get('token') ?? '';
+  const hostUrl = `${window.location.origin}/?view=host&code=${session.code}&token=${hostToken}`;
   const playerUrl = `${window.location.origin}/?view=player&code=${session.code}`;
   const scoreboardUrl = `${window.location.origin}/?view=scoreboard&code=${session.code}`;
 
@@ -231,42 +233,6 @@ export function HostView() {
         {/* ── Right column ────────────────────────────────────────────── */}
         <div className="flex flex-col gap-16">
 
-          {/* Links */}
-          <div className="card">
-            <div className="section-title">Links</div>
-            <div className="flex flex-col gap-12">
-              <div>
-                <div className="flex items-center gap-8" style={{ marginBottom: 4 }}>
-                  <div className="text-dim text-sm">Player join</div>
-                  {session.waitingCount > 0 && (
-                    <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
-                      {session.waitingCount} waiting
-                    </span>
-                  )}
-                </div>
-                <div className="text-dim" style={{ fontSize: '0.8rem', wordBreak: 'break-all', marginBottom: 6 }}>{playerUrl}</div>
-                <button className="btn btn-secondary btn-sm w-full" onClick={() => copyLink(playerUrl, 'player')}>
-                  {copied === 'player' ? '✓ Copied!' : 'Copy Player Link'}
-                </button>
-              </div>
-              <div className="divider" style={{ margin: 0 }} />
-              <div>
-                <div className="flex items-center gap-8" style={{ marginBottom: 4 }}>
-                  <div className="text-dim text-sm">Scoreboard</div>
-                  {session.scoreboardCount > 0 && (
-                    <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
-                      {session.scoreboardCount} watching
-                    </span>
-                  )}
-                </div>
-                <div className="text-dim" style={{ fontSize: '0.8rem', wordBreak: 'break-all', marginBottom: 6 }}>{scoreboardUrl}</div>
-                <button className="btn btn-secondary btn-sm w-full" onClick={() => copyLink(scoreboardUrl, 'scoreboard')}>
-                  {copied === 'scoreboard' ? '✓ Copied!' : 'Copy Scoreboard Link'}
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* Options */}
           <div className="card">
             <div className="section-title">Options</div>
@@ -358,8 +324,87 @@ export function HostView() {
 
             </div>
           </div>
+
+          {/* Links */}
+          <div className="card">
+            <div className="section-title">Links</div>
+            <div className="flex flex-col gap-12">
+              <LinkRow
+                label="Player join"
+                url={playerUrl}
+                copyKey="player"
+                copied={copied}
+                onCopy={() => copyLink(playerUrl, 'player')}
+                badge={session.waitingCount > 0 ? `${session.waitingCount} waiting` : undefined}
+              />
+              <div className="divider" style={{ margin: 0 }} />
+              <LinkRow
+                label="Scoreboard"
+                url={scoreboardUrl}
+                copyKey="scoreboard"
+                copied={copied}
+                onCopy={() => copyLink(scoreboardUrl, 'scoreboard')}
+                badge={session.scoreboardCount > 0 ? `${session.scoreboardCount} watching` : undefined}
+              />
+              <div className="divider" style={{ margin: 0 }} />
+              <LinkRow
+                label="Host"
+                url={hostUrl}
+                copyKey="host"
+                copied={copied}
+                onCopy={() => copyLink(hostUrl, 'host')}
+              />
+            </div>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Link row ───────────────────────────────────────────────────────────────────
+
+function LinkRow({
+  label,
+  url,
+  copyKey,
+  copied,
+  onCopy,
+  badge,
+}: {
+  label: string;
+  url: string;
+  copyKey: string;
+  copied: string;
+  onCopy: () => void;
+  badge?: string;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-8" style={{ marginBottom: 4 }}>
+        <div className="text-dim text-sm" style={{ flex: 1 }}>{label}</div>
+        {badge && <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>{badge}</span>}
+        <button className="btn btn-ghost btn-icon btn-sm" title="Copy link" onClick={onCopy}>
+          {copied === copyKey ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          )}
+        </button>
+        <a className="btn btn-ghost btn-icon btn-sm" href={url} target="_blank" rel="noopener noreferrer" title="Open in new tab">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
+        </a>
+      </div>
+      <div className="text-dim" style={{ fontSize: '0.78rem', wordBreak: 'break-all' }}>{url}</div>
     </div>
   );
 }

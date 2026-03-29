@@ -60,7 +60,7 @@
       }
 
       .container {
-        max-width: 960px;
+        max-width: 1100px;
         margin: 0 auto;
         padding: 24px 16px;
       }
@@ -131,7 +131,7 @@
       /* Landing layout */
       .landing-page { min-height: 100vh; }
 
-      .landing-hero { padding: 96px 0 80px; text-align: center; }
+      .landing-hero { padding: 96px 0 30px; text-align: center; }
 
       .landing-hero-badge {
         display: inline-flex;
@@ -212,35 +212,35 @@
         padding: 0 24px;
       }
 
-      /* .landing-step-num {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #ffd700, #ff8c00);
-        color: #000;
-        font-size: 1.3rem;
-        font-weight: 900;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 16px;
-        flex-shrink: 0;
-      } */
-
       .landing-step-num {
-        width: 48px;
-        height: 48px;
+        width: 52px;
+        height: 52px;
         border-radius: 25%;
-        border: 2px solid #ffd700;
-        filter: drop-shadow(0 0 5px #ffd700);
-        color: #ffd700;
-        font-size: 1.4rem;
+        font-size: 1.5rem;
         font-weight: 900;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-bottom: 16px;
         flex-shrink: 0;
+      }
+
+      .landing-step-num.step2 {
+          border: 2px solid rgb(203, 207, 110);
+          color: rgb(203, 207, 110);
+          filter: drop-shadow(0 0 8px rgba(203, 207, 110, 0.9));
+      }
+
+      .landing-step-num.step1 {
+          border: 2px solid rgb(90, 227, 237); 
+          color: rgb(90, 227, 237);
+          filter: drop-shadow(0 0 8px rgba(90, 227, 237, 0.9));
+      }
+
+      .landing-step-num.step3 {
+          border: 2px solid rgb(214, 108, 221);  
+          color: rgb(214, 108, 221);
+          filter: drop-shadow(0 0 8px rgba(214, 108, 221, 0.9));
       }
 
       .landing-step-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
@@ -323,11 +323,11 @@
             <div class="card landing-feature-card">
               <div class="landing-feature-icon-glow"><img src="assets/score.svg"></div>
               <h3 class="landing-feature-title">Live Scoreboard</h3>
-              <p class="landing-feature-desc">Scores update in real time across all screens. Animated reordering as points change.</p>
+              <p class="landing-feature-desc">Scores update in real time across all screens. Keep track of the action as it happens.</p>
             </div>
             <div class="card landing-feature-card">
               <div class="landing-feature-icon-glow"><img src="assets/qr.svg"></div>
-              <h3 class="landing-feature-title">QR Code Joining</h3>
+              <h3 class="landing-feature-title">QR Code</h3>
               <p class="landing-feature-desc">Display a QR code on the scoreboard screen, players scan and join instantly.</p>
             </div>
             <div class="card landing-feature-card">
@@ -343,7 +343,7 @@
             <div class="card landing-feature-card">
               <div class="landing-feature-icon-glow"><img src="assets/account.svg"></div>
               <h3 class="landing-feature-title">No Account Needed</h3>
-              <p class="landing-feature-desc">Sessions are code-based and ephemeral. No sign-up, no passwords, no friction.</p>
+              <p class="landing-feature-desc">Sessions are instantly created. No sign-up, no passwords, no friction.</p>
             </div>
           </div>
         </div>
@@ -355,19 +355,19 @@
           <h2 class="landing-section-heading">Up and running in seconds</h2>
           <div class="landing-steps">
             <div class="landing-step">
-              <div class="landing-step-num">1</div>
+              <div class="landing-step-num step1">1</div>
               <h3 class="landing-step-title">Host creates a session</h3>
-              <p class="landing-step-desc">Click "Host a New Game." A unique session code is generated instantly. Share the code or QR with players.</p>
+              <p class="landing-step-desc">Click "Host a Game." A unique session code is generated instantly. Share the code or QR with players.</p>
             </div>
             <div class="landing-step-connector" aria-hidden="true"></div>
             <div class="landing-step">
-              <div class="landing-step-num">2</div>
+              <div class="landing-step-num step2">2</div>
               <h3 class="landing-step-title">Players join by code</h3>
               <p class="landing-step-desc">Players open the link, enter the code (or scan the QR), pick a team, and they're in. No download. No account.</p>
             </div>
             <div class="landing-step-connector" aria-hidden="true"></div>
             <div class="landing-step">
-              <div class="landing-step-num">3</div>
+              <div class="landing-step-num step3">3</div>
               <h3 class="landing-step-title">Play and keep score</h3>
               <p class="landing-step-desc">Host enables buzzing. Teams race to buzz first. Award points from the host panel. Scoreboard updates live for everyone.</p>
             </div>

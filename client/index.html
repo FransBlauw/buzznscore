@@ -69,6 +69,7 @@
         font-size: clamp(2.8rem, 8vw, 5rem);
         font-weight: 900;
         background: linear-gradient(135deg, #ffd700, #ff8c00);
+        filter: drop-shadow(0 0 10px rgba(255, 140, 0, 0.5));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -108,8 +109,8 @@
       }
       .btn:active { transform: scale(0.97); }
 
-      .btn-gold { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; }
-      .btn-gold:hover { box-shadow: 0 4px 24px rgba(255, 200, 0, 0.45); }
+      .btn-gold { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; box-shadow: 0 0px 24px rgba(255, 200, 0, 0.45);  }
+      .btn-gold:hover { box-shadow: 0 0px 32px rgba(255, 200, 0, 0.7); }
 
       .btn-secondary {
         background: var(--card);
@@ -125,7 +126,7 @@
       }
       .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
 
-      .btn-large { padding: 16px 40px; font-size: 1.2rem; border-radius: var(--radius-lg); }
+      .btn-large { padding: 16px 40px; font-size: 1.2rem; border-radius: 32px; min-width: 270px; }
 
       /* Landing layout */
       .landing-page { min-height: 100vh; }
@@ -167,6 +168,7 @@
         gap: 12px;
         flex-wrap: wrap;
         justify-content: center;
+        margin-top: 12px;
       }
 
       .landing-section { padding: 80px 0; }
@@ -195,6 +197,7 @@
 
       .landing-feature-card { display: flex; flex-direction: column; gap: 10px; }
       .landing-feature-icon { font-size: 1.8rem; line-height: 1; }
+      .landing-feature-icon-glow img { width: 36px; height: 36px; filter: drop-shadow(0 0 8px #ffd700); }
       .landing-feature-title { font-size: 1rem; font-weight: 700; }
       .landing-feature-desc { font-size: 0.875rem; color: var(--text-dim); line-height: 1.55; }
 
@@ -209,13 +212,29 @@
         padding: 0 24px;
       }
 
-      .landing-step-num {
+      /* .landing-step-num {
         width: 48px;
         height: 48px;
         border-radius: 50%;
         background: linear-gradient(135deg, #ffd700, #ff8c00);
         color: #000;
         font-size: 1.3rem;
+        font-weight: 900;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+        flex-shrink: 0;
+      } */
+
+      .landing-step-num {
+        width: 48px;
+        height: 48px;
+        border-radius: 25%;
+        border: 2px solid #ffd700;
+        filter: drop-shadow(0 0 5px #ffd700);
+        color: #ffd700;
+        font-size: 1.4rem;
         font-weight: 900;
         display: flex;
         align-items: center;
@@ -231,23 +250,28 @@
         flex-shrink: 0;
         width: 40px;
         height: 2px;
-        background: var(--card-border);
+        background: #ff8c00;
+        filter: drop-shadow(0 0 7px #ff8c00);
         align-self: flex-start;
         margin-top: 23px;
       }
 
       .landing-usecases-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 16px;
-        max-width: 720px;
+        max-width: 920px;
         margin: 0 auto;
       }
 
-      .landing-usecase-card { display: flex; align-items: flex-start; gap: 16px; }
-      .landing-usecase-icon { font-size: 1.6rem; line-height: 1; flex-shrink: 0; margin-top: 2px; }
-      .landing-usecase-label { font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
-      .landing-usecase-desc { font-size: 0.875rem; color: var(--text-dim); }
+      .landing-usecase-card { 
+        display: flex; 
+        align-items: flex-start; 
+        gap: 16px; 
+        justify-content: center; 
+        filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5)); 
+      }
+      .landing-usecase-label { font-weight: 700; font-size: 1rem; margin-bottom: 4px; align-self: center; }
 
       @media (max-width: 860px) {
         .landing-features-grid { grid-template-columns: repeat(2, 1fr); }
@@ -277,7 +301,7 @@
             Real-time buzzer and score management for game nights, classrooms, and competitions
           </p>
           <div class="landing-cta-group">
-            <button class="btn btn-gold btn-large" onclick="go('host')">Host a New Game</button>
+            <button class="btn btn-gold btn-large" onclick="go('host')">Host a Game</button>
             <div class="landing-cta-secondary">
               <button class="btn btn-secondary" onclick="go('player')">Join a Game</button>
               <button class="btn btn-ghost" onclick="go('scoreboard')">Watch Scoreboard</button>
@@ -292,32 +316,32 @@
           <h2 class="landing-section-heading">Everything you need to run the show</h2>
           <div class="landing-features-grid">
             <div class="card landing-feature-card">
-              <div class="landing-feature-icon">⚡</div>
+              <div class="landing-feature-icon-glow"><img src="assets/buzzer.svg"></div>
               <h3 class="landing-feature-title">Instant Buzzer</h3>
               <p class="landing-feature-desc">First team to tap wins. Millisecond-accurate timestamps rank every buzz in order.</p>
             </div>
             <div class="card landing-feature-card">
-              <div class="landing-feature-icon">📊</div>
+              <div class="landing-feature-icon-glow"><img src="assets/score.svg"></div>
               <h3 class="landing-feature-title">Live Scoreboard</h3>
               <p class="landing-feature-desc">Scores update in real time across all screens. Animated reordering as points change.</p>
             </div>
             <div class="card landing-feature-card">
-              <div class="landing-feature-icon">📱</div>
+              <div class="landing-feature-icon-glow"><img src="assets/qr.svg"></div>
               <h3 class="landing-feature-title">QR Code Joining</h3>
               <p class="landing-feature-desc">Display a QR code on the scoreboard screen, players scan and join instantly.</p>
             </div>
             <div class="card landing-feature-card">
-              <div class="landing-feature-icon">👥</div>
+              <div class="landing-feature-icon-glow"><img src="assets/team.svg"></div>
               <h3 class="landing-feature-title">Multiple Teams</h3>
               <p class="landing-feature-desc">Create and name as many teams as you need. Players pick or create their own team.</p>
             </div>
             <div class="card landing-feature-card">
-              <div class="landing-feature-icon">🎛️</div>
+              <div class="landing-feature-icon-glow"><img src="assets/control.svg"></div>
               <h3 class="landing-feature-title">Host Controls</h3>
               <p class="landing-feature-desc">Enable and disable buzzing, reset rounds, adjust scores, lock joining, all in one place.</p>
             </div>
             <div class="card landing-feature-card">
-              <div class="landing-feature-icon">🔓</div>
+              <div class="landing-feature-icon-glow"><img src="assets/account.svg"></div>
               <h3 class="landing-feature-title">No Account Needed</h3>
               <p class="landing-feature-desc">Sessions are code-based and ephemeral. No sign-up, no passwords, no friction.</p>
             </div>
@@ -357,32 +381,16 @@
           <h2 class="landing-section-heading">Perfect for</h2>
           <div class="landing-usecases-grid">
             <div class="card landing-usecase-card">
-              <span class="landing-usecase-icon">🍺</span>
-              <div>
                 <div class="landing-usecase-label">Trivia Nights</div>
-                <div class="landing-usecase-desc">Pub quizzes and bar trivia with real buzz-in drama.</div>
-              </div>
             </div>
             <div class="card landing-usecase-card">
-              <span class="landing-usecase-icon">📚</span>
-              <div>
                 <div class="landing-usecase-label">Classroom Quizzes</div>
-                <div class="landing-usecase-desc">Engage students with competitive, instant-feedback rounds.</div>
-              </div>
             </div>
             <div class="card landing-usecase-card">
-              <span class="landing-usecase-icon">🎉</span>
-              <div>
                 <div class="landing-usecase-label">Party Games</div>
-                <div class="landing-usecase-desc">Keep everyone on their toes at birthdays and gatherings.</div>
-              </div>
             </div>
             <div class="card landing-usecase-card">
-              <span class="landing-usecase-icon">🏆</span>
-              <div>
                 <div class="landing-usecase-label">Team Competitions</div>
-                <div class="landing-usecase-desc">Corporate events, hackathons, and any team challenge.</div>
-              </div>
             </div>
           </div>
         </div>
@@ -393,7 +401,7 @@
         <div class="container" style="text-align:center">
           <h2 class="landing-section-heading">Ready to play?</h2>
           <p class="subtitle" style="margin-bottom:32px">No setup required. Your session is ready in one click.</p>
-          <button class="btn btn-gold btn-large" onclick="go('host')">Host a New Game</button>
+          <button class="btn btn-gold btn-large" onclick="go('host')">Host a Game</button>
         </div>
       </section>
 

@@ -46,14 +46,14 @@ body {
   text-align: center;
   letter-spacing: -0.02em;
 }
-.subtitle {
+/* .subtitle {
   font-size: 2.5rem;
   font-weight: 700;
   color: #ff8c00;
   text-align: center;
   letter-spacing: -0.02em;
-}
-/* .subtitle { color: var(--text-dim); text-align: center; margin-top: 8px; font-size: 1.1rem; } */
+} */
+.subtitle { color: var(--text-dim); text-align: center; margin-top: 8px; font-size: 1.3rem; }
 .section-title {
   font-size: 0.75rem;
   font-weight: 700;

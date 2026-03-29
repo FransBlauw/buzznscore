@@ -22,6 +22,12 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  useEffect(() => {
+    if (view === 'host') document.title = 'BuzzNScore | Host';
+    else if (view === 'scoreboard') document.title = 'BuzzNScore | Scoreboard';
+    else if (view === 'player') document.title = 'BuzzNScore | Player';
+  }, [view]);
+
   if (view === 'host') return <HostView />;
   if (view === 'scoreboard') return <ScoreboardView />;
   if (view === 'player') return <PlayerView />;

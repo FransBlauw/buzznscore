@@ -25,6 +25,11 @@ export function PlayerView() {
   const [connected, setConnected] = useState(socket.connected);
   const hasConnectedRef = useRef(false);
 
+  useEffect(() => {
+    if (step === 'in-game' && teamName) document.title = `BuzzNScore | ${teamName}`;
+    else document.title = 'BuzzNScore';
+  }, [step, teamName]);
+
   // Refs so the reconnect handler always sees current values without being recreated
   const stepRef = useRef(step);
   const codeRef = useRef(code);
@@ -220,7 +225,7 @@ export function PlayerView() {
   // ── Step 1: Enter session code ─────────────────────────────────────────────
   if (step === 'enter-code') {
     return (
-      <div className="container" style={{ paddingTop: 60, maxWidth: 440 }}>{reconnectBanner}
+      <div className="container" style={{ paddingTop: 80, maxWidth: 440 }}>{reconnectBanner}
         <h1 className="title">BuzzNScore</h1>
         <h2 className="subtitle">Join Game</h2>
         <div className="card mt-32">

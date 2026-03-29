@@ -119,9 +119,9 @@ export function ScoreboardView() {
   // ── Enter code view ────────────────────────────────────────────────────────
   if (!watching) {
     return (
-      <div className="container" style={{ paddingTop: 72 }}>
+      <div className="container" style={{ paddingTop: 80 }}>
         <h1 className="title">BuzzNScore</h1>
-        <p className="subtitle">Watch Live Scoreboard</p>
+        <h2 className="subtitle">Watch Live Scoreboard</h2>
         <div className="card mt-32" style={{ maxWidth: 400, margin: '48px auto 0' }}>
           <div className="flex flex-col gap-12">
             <input

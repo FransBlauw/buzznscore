@@ -168,7 +168,7 @@ export function ScoreboardView() {
     else cardRefs.current.delete(teamId);
   };
 
-  const playerUrl = `${window.location.origin}/player/${session.code}`;
+  const playerUrl = `${window.location.origin}/play/${session.code}`;
 
   return (
     <div className="scoreboard-container">

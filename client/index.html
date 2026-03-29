@@ -52,6 +52,7 @@
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
+    <div id="bg"></div>
     <div class="landing-page">
 
       <!-- Hero -->
@@ -168,12 +169,18 @@
       </section>
 
     </div>
-
+</div>
     <script>
       function go(view) {
         const map = { host: 'host', player: 'play', scoreboard: 'score' };
         window.location.href = '/' + map[view];
       }
+      const img = new Image();
+      img.src = 'assets/bg.webp';
+
+      img.onload = () => {
+        document.getElementById('bg').classList.add('loaded');
+      };
     </script>
   </body>
 </html>

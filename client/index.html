@@ -170,13 +170,13 @@
 
     </div>
 </div>
-    <script>
-      function go(view) {
+    <script type="module">
+      window.go = function go(view) {
         const map = { host: 'host', player: 'play', scoreboard: 'score' };
         window.location.href = '/' + map[view];
-      }
+      };
       const img = new Image();
-      img.src = 'assets/bg.webp';
+      img.src = new URL('./assets/bg.webp', import.meta.url).href;
 
       img.onload = () => {
         document.getElementById('bg').classList.add('loaded');

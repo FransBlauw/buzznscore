@@ -50,8 +50,7 @@ export function HostView() {
 
   useEffect(() => {
     const onPopState = () => {
-      const params = new URLSearchParams(window.location.search);
-      if (!params.get('code')) setSession(null);
+      if (!window.location.pathname.split('/')[2]) setSession(null);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -72,7 +71,7 @@ export function HostView() {
           // Session expired or token invalid — drop from storage and URL
           dropSession(code);
           setSavedSessions(loadSavedSessions());
-          window.history.replaceState({}, '', '?view=host');
+          window.history.replaceState({}, '', '/host');
         }
       });
     };
@@ -81,9 +80,8 @@ export function HostView() {
       const isFirst = !hasConnectedRef.current;
       hasConnectedRef.current = true;
       setConnected(true);
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
-      const token = params.get('token');
+      const code = window.location.pathname.split('/')[2] ?? '';
+      const token = new URLSearchParams(window.location.search).get('token') ?? '';
       if (code && token) rejoin(code, token, isFirst);
     };
 
@@ -102,7 +100,7 @@ export function HostView() {
     socket.emit('session:create', (result: { state: SessionState; hostToken: string }) => {
       const { code } = result.state;
       const token = result.hostToken;
-      window.history.pushState({}, '', `?view=host&code=${code}&token=${token}`);
+      window.history.pushState({}, '', `/host/${code}?token=${token}`);
       persistSession(code, token);
       setSavedSessions(loadSavedSessions());
       setSession(result.state);
@@ -110,7 +108,7 @@ export function HostView() {
   };
 
   const continueSession = (saved: SavedSession) => {
-    window.history.pushState({}, '', `?view=host&code=${saved.code}&token=${saved.token}`);
+    window.history.pushState({}, '', `/host/${saved.code}?token=${saved.token}`);
     setRejoining(true);
     socket.emit('host:rejoin', saved.code, saved.token, (state: SessionState | null) => {
       setRejoining(false);
@@ -121,7 +119,7 @@ export function HostView() {
       } else {
         dropSession(saved.code);
         setSavedSessions(loadSavedSessions());
-        window.history.replaceState({}, '', '?view=host');
+        window.history.replaceState({}, '', '/host');
       }
     });
   };
@@ -172,9 +170,9 @@ export function HostView() {
   }
 
   const hostToken = new URLSearchParams(window.location.search).get('token') ?? '';
-  const hostUrl = `${window.location.origin}/?view=host&code=${session.code}&token=${hostToken}`;
-  const playerUrl = `${window.location.origin}/?view=player&code=${session.code}`;
-  const scoreboardUrl = `${window.location.origin}/?view=scoreboard&code=${session.code}`;
+  const hostUrl = `${window.location.origin}/host/${session.code}?token=${hostToken}`;
+  const playerUrl = `${window.location.origin}/play/${session.code}`;
+  const scoreboardUrl = `${window.location.origin}/score/${session.code}`;
 
   const copyLink = (url: string, key: string) => {
     const finish = () => { setCopied(key); setTimeout(() => setCopied(''), 2000); };

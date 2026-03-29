@@ -36,7 +36,20 @@ VITE_SERVER_URL=http://<LAN_IP>:3001   # omit for localhost-only use
 ## Architecture
 
 ### URL routing
-No React Router. `?view=host|player|scoreboard` query param. `App.tsx` switches on it.
+Two entry points:
+- `/` — standalone static HTML landing page (`client/index.html`). No React. Buttons navigate to `/host`, `/play`, `/score`.
+- `/host`, `/play`, `/score` — React app (`client/app/index.html`). No React Router; `App.tsx` switches on pathname prefix. Unknown path redirects to `/`.
+
+URL structure:
+| Path | Description |
+|---|---|
+| `/host` | Host lobby (no session yet) |
+| `/host/<CODE>?token=<TOKEN>` | Host live session; token used for rejoin on refresh |
+| `/play` | Player enter-code screen |
+| `/play/<CODE>` | Player pick-team screen |
+| `/play/<CODE>?team=<TEAMID>` | Player in-game; team param used for rejoin on refresh |
+| `/score` | Scoreboard enter-code screen |
+| `/score/<CODE>` | Scoreboard watching a session |
 
 ### Socket.io rooms
 - `<CODE>` — main session room (host, players, scoreboard)
@@ -50,7 +63,7 @@ No React Router. `?view=host|player|scoreboard` query param. `App.tsx` switches 
 | `session:peek` | Player peeks at teams before joining |
 | `scoreboard:watch` | Scoreboard subscribes to a session |
 | `player:join` | Player joins/creates a team; 3rd arg is `isRejoin` boolean (true on socket reconnect) |
-| `player:rejoin` | Player reconnects by saved `teamId` (URL param); skips team-name step |
+| `player:rejoin` | Player reconnects by saved `teamId` (`?team=` URL param); skips team-name step |
 | `team:create` | Host creates an empty team |
 | `team:delete` | Host deletes a team |
 | `team:rename` | Host renames a team; also updates any buzz order entries with the new name |
@@ -75,12 +88,12 @@ No React Router. `?view=host|player|scoreboard` query param. `App.tsx` switches 
 | `buzzer:rejected` | Sent to a player who buzzed when buzzing was closed or their team already buzzed |
 
 ### Host session persistence
-`hostToken` (UUID) is stored in the URL: `?view=host&code=X&token=Y`. On refresh, `host:rejoin` validates the token and reassigns the host socket. No localStorage.
+`hostToken` (UUID) is stored in the URL: `/host/<CODE>?token=<TOKEN>`. On refresh, `host:rejoin` validates the token and reassigns the host socket. No localStorage.
 
 ### Player join flow
 `enter-code` → `pick-team` → `in-game` (React state machine in `PlayerView.tsx`)
 
-After joining, `teamId` is added to the URL: `?view=player&code=X&teamId=Y`. On refresh, `player:rejoin` (by teamId) is used to skip the team-selection step. If the team no longer exists, the player falls back to `pick-team`.
+URL advances with each step: `/play` → `/play/<CODE>` → `/play/<CODE>?team=<TEAMID>`. On refresh at any step, the URL is read to restore state. `player:rejoin` (by teamId) skips team-selection; if the team no longer exists, falls back to `pick-team`.
 
 ### SessionState fields
 `code`, `buzzingEnabled`, `joiningEnabled`, `allowTeamCreation`, `maxTeamSize`, `qrCodeMode`, `teams` (array of `TeamState`), `buzzOrder` (array of `BuzzEntry`), `scoreboardCount`, `waitingCount` (players currently in the `:peek` room).
@@ -89,8 +102,10 @@ After joining, `teamId` is added to the URL: `?view=player&code=X&teamId=Y`. On 
 
 ```
 server/src/server.ts             # all server logic
+client/index.html                # standalone landing page (pure HTML/CSS/JS, no React)
+client/app/index.html            # React app entry point (served at /host, /play, /score)
 client/src/
-  App.tsx                        # view routing
+  App.tsx                        # view routing (pathname-based: /host|/play|/score; redirects to / if no match)
   socket.ts                      # socket singleton (uses VITE_SERVER_URL or origin)
   types.ts                       # shared TS interfaces (TeamState, SessionState, BuzzEntry)
   views/

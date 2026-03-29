@@ -4,7 +4,7 @@ import { socket } from '../socket';
 import { SessionState, TeamState } from '../types';
 
 export function ScoreboardView() {
-  const initialCode = new URLSearchParams(window.location.search).get('code') ?? '';
+  const initialCode = window.location.pathname.split('/')[2] ?? '';
 
   const [code, setCode] = useState(initialCode.toUpperCase());
   const [session, setSession] = useState<SessionState | null>(null);
@@ -108,6 +108,7 @@ export function ScoreboardView() {
       sessionCode,
       (state: SessionState | null) => {
         if (!state) { setError('Session not found. Check the code and try again.'); return; }
+        window.history.replaceState({}, '', `/score/${sessionCode}`);
         setSession(state);
         setWatching(true);
         setError('');
@@ -167,7 +168,7 @@ export function ScoreboardView() {
     else cardRefs.current.delete(teamId);
   };
 
-  const playerUrl = `${window.location.origin}?view=player&code=${session.code}`;
+  const playerUrl = `${window.location.origin}/player/${session.code}`;
 
   return (
     <div className="scoreboard-container">

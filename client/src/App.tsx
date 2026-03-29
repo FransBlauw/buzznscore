@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { HostView } from './views/HostView';
 import { ScoreboardView } from './views/ScoreboardView';
 import { PlayerView } from './views/PlayerView';
-import { LandingView } from './views/LandingView';
 
 function getView() {
-  return new URLSearchParams(window.location.search).get('view') ?? 'landing';
+  const p = window.location.pathname;
+  if (p.startsWith('/host')) return 'host';
+  if (p.startsWith('/play')) return 'player';
+  if (p.startsWith('/score')) return 'scoreboard';
+  return '';
 }
 
 export default function App() {
@@ -19,16 +22,10 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  function navigate(v: string) {
-    const url = new URL(window.location.href);
-    url.search = `?view=${v}`;
-    window.history.pushState({}, '', url);
-    setView(v);
-  }
-
   if (view === 'host') return <HostView />;
   if (view === 'scoreboard') return <ScoreboardView />;
   if (view === 'player') return <PlayerView />;
 
-  return <LandingView navigate={navigate} />;
+  window.location.replace('/');
+  return null;
 }

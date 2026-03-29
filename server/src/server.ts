@@ -217,10 +217,15 @@ const io = new Server(httpServer, { cors: { origin: '*' } });
 // Serve built client (production only — in dev the Vite server handles the client)
 const clientDist = path.join(__dirname, '../../client/dist');
 if (existsSync(path.join(clientDist, 'index.html'))) {
+  const appHtml = path.join(clientDist, 'app/index.html');
   app.use(express.static(clientDist));
-  app.get('*', (_req, res) => {
-    res.sendFile(path.join(clientDist, 'index.html'));
-  });
+  app.get('/host',             (_req, res) => res.sendFile(appHtml));
+  app.get('/host/:code',       (_req, res) => res.sendFile(appHtml));
+  app.get('/play',         (_req, res) => res.sendFile(appHtml));
+  app.get('/play/:code',   (_req, res) => res.sendFile(appHtml));
+  app.get('/score',        (_req, res) => res.sendFile(appHtml));
+  app.get('/score/:code',  (_req, res) => res.sendFile(appHtml));
+  app.get('*',                 (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
 } else {
   console.log('No client/dist found — run "npm run build:client" for production serving.');
   app.get('*', (_req, res) => {

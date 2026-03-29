@@ -5,9 +5,8 @@ import { SessionState, TeamState } from '../types';
 type Step = 'enter-code' | 'pick-team' | 'in-game';
 
 export function PlayerView() {
-  const params = new URLSearchParams(window.location.search);
-  const initialCode = (params.get('code') ?? '').toUpperCase();
-  const initialTeamId = params.get('teamId') ?? '';
+  const initialCode = (window.location.pathname.split('/')[2] ?? '').toUpperCase();
+  const initialTeamId = new URLSearchParams(window.location.search).get('team') ?? '';
 
   const [step, setStep] = useState<Step>(
     initialCode && initialTeamId ? 'in-game' : initialCode ? 'pick-team' : 'enter-code'
@@ -46,7 +45,7 @@ export function PlayerView() {
     };
     const onTeamDeleted = () => {
       const url = new URL(window.location.href);
-      url.searchParams.delete('teamId');
+      url.searchParams.delete('team');
       window.history.replaceState({}, '', url.toString());
       setStep('pick-team');
       setTeamId('');
@@ -106,7 +105,7 @@ export function PlayerView() {
               setOptimisticBuzzed(false);
               setError(result.error ?? 'Could not rejoin team. Please select again.');
               const url = new URL(window.location.href);
-              url.searchParams.delete('teamId');
+              url.searchParams.delete('team');
               window.history.replaceState({}, '', url.toString());
               socket.emit('session:peek', c, (peek: { teams: TeamState[]; joiningEnabled: boolean; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
                 if (peek) { setAvailableTeams(peek.teams); setJoiningEnabled(peek.joiningEnabled); setTeamCreationAllowed(peek.allowTeamCreation); setMaxTeamSize(peek.maxTeamSize); }
@@ -146,7 +145,7 @@ export function PlayerView() {
         (result: { success: boolean; teamId?: string; teamName?: string; state?: SessionState; error?: string }) => {
           if (!result.success) {
             const url = new URL(window.location.href);
-            url.searchParams.delete('teamId');
+            url.searchParams.delete('team');
             window.history.replaceState({}, '', url.toString());
             setStep('pick-team');
             setError(result.error ?? 'Could not rejoin. Please select a team.');
@@ -171,6 +170,7 @@ export function PlayerView() {
       sessionCode,
       (result: { teams: TeamState[]; joiningEnabled: boolean; allowTeamCreation: boolean; maxTeamSize: number | null } | null) => {
         if (!result) { setError('Session not found.'); setStep('enter-code'); return; }
+        window.history.replaceState({}, '', `/play/${sessionCode}`);
         setAvailableTeams(result.teams);
         setJoiningEnabled(result.joiningEnabled);
         setTeamCreationAllowed(result.allowTeamCreation);
@@ -193,9 +193,7 @@ export function PlayerView() {
         if (result.state) setSession(result.state);
         setStep('in-game');
         setError('');
-        const url = new URL(window.location.href);
-        url.searchParams.set('teamId', result.teamId!);
-        window.history.replaceState({}, '', url.toString());
+        window.history.replaceState({}, '', `/play/${code}?team=${result.teamId!}`);
       }
     );
   };
@@ -341,7 +339,7 @@ export function PlayerView() {
 
         <button
           className="btn btn-ghost btn-sm mt-16"
-          onClick={() => { setStep('enter-code'); setError(''); }}
+          onClick={() => { window.history.replaceState({}, '', '/player'); setStep('enter-code'); setError(''); }}
         >
           ← Back
         </button>

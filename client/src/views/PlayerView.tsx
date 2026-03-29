@@ -221,7 +221,8 @@ export function PlayerView() {
   if (step === 'enter-code') {
     return (
       <div className="container" style={{ paddingTop: 60, maxWidth: 440 }}>{reconnectBanner}
-        <h1 className="title">Join Game</h1>
+        <h1 className="title">BuzzNScore</h1>
+        <h2 className="subtitle">Join Game</h2>
         <div className="card mt-32">
           <div className="flex flex-col gap-16">
             <div>
@@ -349,21 +350,24 @@ export function PlayerView() {
 
   // ── Step 3: In-game ────────────────────────────────────────────────────────
   const { canBuzz, buzzed, position } = buzzState;
-  const buzzLabel = buzzed ? (position === 0 ? 'FIRST!' : 'BUZZED!') : canBuzz ? 'BUZZ!' : 'WAITING…';
+  const buzzLabel = buzzed ? (position === 0 ? 'FIRST!' : 'BUZZED!') : canBuzz ? 'BUZZ' : 'WAITING…';
   const buzzClass = buzzed ? 'buzz-button-buzzed' : canBuzz ? 'buzz-button-active' : 'buzz-button-waiting';
 
   return (
     <div className="container text-center" style={{ paddingTop: 32, maxWidth: 500 }}>{reconnectBanner}
-      <div className="text-dim text-sm">Playing as</div>
+      <div className="text-dim text-sm" style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              BuzzNScore.app
+            </div>
+      {/* <div className="text-dim text-sm">Playing as</div> */}
       <div style={{ fontSize: '1.9rem', fontWeight: 800, marginTop: 4 }}>{teamName}</div>
 
-      <div style={{ marginTop: 14 }}>
+      {/* <div style={{ marginTop: 14 }}>
         {session?.buzzingEnabled ? (
           <span className="badge badge-green">BUZZING OPEN</span>
         ) : (
           <span className="badge badge-dim">Waiting for host…</span>
         )}
-      </div>
+      </div> */}
 
       <button className={`buzz-button ${buzzClass}`} onClick={buzz} disabled={!canBuzz}>
         {buzzLabel}
@@ -371,7 +375,7 @@ export function PlayerView() {
 
       {buzzed && position >= 0 && (
         <div style={{ fontSize: '1.3rem', fontWeight: 800, marginTop: 4 }}>
-          {position === 0 ? '#1 You were first!' : position === 1 ? '#2 Second place' : position === 2 ? '#3 Third place' : `You buzzed in #${position + 1}`}
+          {position === 0 ? '#1 You buzzed first!' : `You buzzed in #${position + 1}`}
         </div>
       )}
       {buzzed && position < 0 && (

@@ -136,7 +136,7 @@ export function HostView() {
     return (
       <div className="container" style={{ paddingTop: 80 }}>
         <h1 className="title">BuzzNScore</h1>
-        <p className="subtitle">Host a new game session</p>
+        <h2 className="subtitle">Host a Game</h2>
         {savedSessions.length > 0 && (
           <div style={{ maxWidth: 420, margin: '32px auto 0' }}>
             <div className="text-dim text-sm" style={{ marginBottom: 10 }}>Previous sessions</div>

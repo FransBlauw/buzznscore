@@ -81,7 +81,14 @@
         text-align: center;
         letter-spacing: -0.02em;
         margin-bottom: 0;
+        animation: titlepulse 2.5s ease-in-out infinite;
       }
+
+      @keyframes titlepulse {
+        0%, 100% { filter: drop-shadow(0 0 7px rgba(255, 140, 0, 0.5)); }
+        50%       { filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5)); }
+      }
+
 
       .subtitle {
         color: var(--text-dim);
@@ -114,7 +121,12 @@
       }
       .btn:active { transform: scale(0.97); }
 
-      .btn-gold { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; box-shadow: 0 0px 24px rgba(255, 200, 0, 0.45);  }
+      .btn-gold { 
+        background: linear-gradient(135deg, #ffd700, #ff8c00); 
+        color: #000; 
+        box-shadow: 0 0px 24px rgba(255, 200, 0, 0.45);  
+      }
+      
       .btn-gold:hover { box-shadow: 0 0px 32px rgba(255, 200, 0, 0.7); }
 
       .btn-secondary {
@@ -202,7 +214,16 @@
 
       .landing-feature-card { display: flex; flex-direction: column; gap: 10px; }
       .landing-feature-icon { font-size: 1.8rem; line-height: 1; }
-      .landing-feature-icon-glow img { width: 36px; height: 36px; filter: drop-shadow(0 0 8px #ffd700); }
+      .landing-feature-icon-glow img { 
+        width: 36px; 
+        height: 36px; 
+        filter: drop-shadow(0 0 8px #ffd700); 
+        animation: glowpulse 2.5s ease-in-out infinite;
+      }
+      @keyframes glowpulse {
+        0%, 100% { filter: drop-shadow(0 0 8px #ffd700aa); }
+        50%       { filter: drop-shadow(0 0 8px #ffd700); }
+      }
       .landing-feature-title { font-size: 1rem; font-weight: 700; }
       .landing-feature-desc { font-size: 0.875rem; color: var(--text-dim); line-height: 1.55; }
 
@@ -234,18 +255,33 @@
           border: 2px solid rgb(203, 207, 110);
           color: rgb(203, 207, 110);
           filter: drop-shadow(0 0 8px rgba(203, 207, 110, 0.9));
+          animation: pulsestep2 2.9s ease-in-out infinite;
+      }
+      @keyframes pulsestep2 {
+        0%, 100% { filter: drop-shadow(0 0 8px rgba(203, 207, 110, 0.5)); }
+        50%       { filter: drop-shadow(0 0 8px rgba(203, 207, 110, 0.9)); }
       }
 
       .landing-step-num.step1 {
           border: 2px solid rgb(90, 227, 237); 
           color: rgb(90, 227, 237);
           filter: drop-shadow(0 0 8px rgba(90, 227, 237, 0.9));
+          animation: pulsestep1 3s ease-in-out infinite;
+      }
+      @keyframes pulsestep1 {
+        0%, 100% { filter: drop-shadow(0 0 8px rgba(90, 227, 237, 0.5)); }
+        50%       { filter: drop-shadow(0 0 8px rgba(90, 227, 237, 0.9)); }
       }
 
       .landing-step-num.step3 {
           border: 2px solid rgb(214, 108, 221);  
           color: rgb(214, 108, 221);
           filter: drop-shadow(0 0 8px rgba(214, 108, 221, 0.9));
+          animation: pulsestep3 3.1s ease-in-out infinite;
+      }
+      @keyframes pulsestep3 {
+        0%, 100% { filter: drop-shadow(0 0 8px rgba(214, 108, 221, 0.5)); }
+        50%       { filter: drop-shadow(0 0 8px rgba(214, 108, 221, 0.9)); }
       }
 
       .landing-step-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
@@ -280,11 +316,15 @@
 
       @media (max-width: 860px) {
         .landing-features-grid { grid-template-columns: repeat(2, 1fr); }
+        .landing-hero {
+          padding-bottom: 0;
+        }
       }
 
       @media (max-width: 640px) {
-        .landing-hero { padding: 64px 0 60px; }
+        .landing-hero { padding: 64px 0 0px; }
         .landing-features-grid { grid-template-columns: 1fr; }
+        .landing-feature-card { align-items: center; gap: 16px; }
         .landing-steps { flex-direction: column; align-items: center; gap: 32px; }
         .landing-step { padding: 0; max-width: 320px; }
         .landing-step-connector { width: 2px; height: 24px; margin-top: 0; align-self: center; }

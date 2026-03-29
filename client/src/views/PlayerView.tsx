@@ -249,7 +249,7 @@ export function PlayerView() {
               onClick={() => peekSession(code)}
               disabled={code.trim().length < 4}
             >
-              Find Session
+              Join Game
             </button>
           </div>
         </div>

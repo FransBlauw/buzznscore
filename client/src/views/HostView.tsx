@@ -236,9 +236,9 @@ export function HostView() {
         <div className="flex gap-8 ml-auto flex-wrap host-topbar-actions">
           <button className="btn btn-secondary" onClick={resetBuzzing}>Reset Round</button>
           {session.buzzingEnabled ? (
-            <button className="btn btn-ghost" onClick={disableBuzzing}>Disable Buzzing</button>
+            <button className="btn btn-red" style={{ minWidth: 180 }} onClick={disableBuzzing}>Disable Buzzing</button>
           ) : (
-            <button className="btn btn-green" onClick={enableBuzzing}>Enable Buzzing</button>
+            <button className="btn btn-green" style={{ minWidth: 180 }} onClick={enableBuzzing}>Enable Buzzing</button>
           )}
         </div>
       </div>

@@ -24,6 +24,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
+ENV PORT=3000
 EXPOSE 80
 
 CMD ["/start.sh"]

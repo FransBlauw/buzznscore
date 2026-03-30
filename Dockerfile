@@ -1,11 +1,9 @@
-# syntax=docker/dockerfile:1.19
-
 # Stage 1 — Build
 FROM node:20-alpine AS builder
 
 WORKDIR /build
 
-COPY --exclude=docker/* . .
+COPY . .
 RUN npm run install:all && npm run build
 
 # Stage 2 — Runtime
